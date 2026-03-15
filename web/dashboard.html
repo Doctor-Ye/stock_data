@@ -1,0 +1,147 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S&amp;P 500 SEC Dashboard</title>
+  <link rel="stylesheet" href="./dashboard.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">SP500 x SEC</p>
+        <h1>Company Financial Dashboard</h1>
+        <p class="hero-copy">Search, rank, and inspect S&amp;P 500 companies using the local SEC-based financial database and previous-close market data.</p>
+      </div>
+      <div>
+        <div class="lang-switch">
+          <a class="lang-link active" href="./dashboard.html">English</a>
+          <a class="lang-link" href="./dashboard-zh.html">简体中文</a>
+        </div>
+        <div class="hero-stats" id="hero-stats"></div>
+      </div>
+    </header>
+
+    <section class="overview">
+      <article class="panel wide">
+        <div class="panel-head">
+          <h3>Sector Overview</h3>
+          <p>Largest sectors by latest annual revenue</p>
+        </div>
+        <div class="sector-overview" id="sector-overview"></div>
+      </article>
+      <article class="panel overview-table">
+        <div class="panel-head">
+          <h3>Top Revenue</h3>
+          <p>Latest annual revenue</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ticker</th><th>Company</th><th>Revenue</th></tr></thead>
+            <tbody id="top-revenue-body"></tbody>
+          </table>
+        </div>
+      </article>
+      <article class="panel overview-table">
+        <div class="panel-head">
+          <h3>Top Profit</h3>
+          <p>Latest annual net income</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ticker</th><th>Company</th><th>Net Income</th></tr></thead>
+            <tbody id="top-profit-body"></tbody>
+          </table>
+        </div>
+      </article>
+      <article class="panel overview-table">
+        <div class="panel-head">
+          <h3>Latest Filings</h3>
+          <p>Most recent SEC filings</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Ticker</th><th>Form</th></tr></thead>
+            <tbody id="latest-filings-body"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <main class="layout">
+      <section class="sidebar">
+        <div class="toolbar">
+          <input id="search-input" type="search" placeholder="Search ticker, company, sector">
+          <select id="sector-select"></select>
+          <select id="sort-select">
+            <option value="revenue-desc">Revenue Desc</option>
+            <option value="netIncome-desc">Net Income Desc</option>
+            <option value="marketCap-desc">Market Cap Desc</option>
+            <option value="ticker-asc">Ticker Asc</option>
+            <option value="filing-desc">Latest Filing</option>
+          </select>
+        </div>
+        <div class="list-meta" id="list-meta"></div>
+        <div class="company-list" id="company-list"></div>
+      </section>
+
+      <section class="detail">
+        <div class="detail-empty" id="detail-empty">
+          <h2>Select a company</h2>
+          <p>Open a company from the left list or from a ranking table.</p>
+        </div>
+        <div class="detail-content hidden" id="detail-content">
+          <div class="company-head" id="company-head"></div>
+          <div class="metrics-grid" id="metrics-grid"></div>
+          <div class="chart-grid">
+            <article class="panel">
+              <div class="panel-head"><h3>Annual Revenue</h3><p>Last 10 fiscal years</p></div>
+              <div id="annual-revenue-chart"></div>
+            </article>
+            <article class="panel">
+              <div class="panel-head"><h3>Quarterly Revenue</h3><p>Last 12 quarters</p></div>
+              <div id="quarterly-revenue-chart"></div>
+            </article>
+            <article class="panel chart-span">
+              <div class="panel-head"><h3>Free Cash Flow</h3><p>Annual trend</p></div>
+              <div id="annual-fcf-chart"></div>
+            </article>
+          </div>
+          <div class="tables tables-three">
+            <article class="panel">
+              <div class="panel-head"><h3>Annual Financials</h3></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>FY</th><th>Revenue</th><th>Net Income</th><th>FCF</th><th>EPS</th></tr></thead>
+                  <tbody id="annual-table-body"></tbody>
+                </table>
+              </div>
+            </article>
+            <article class="panel">
+              <div class="panel-head"><h3>Quarterly Financials</h3></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Quarter</th><th>Revenue</th><th>Net Income</th><th>FCF</th><th>EPS</th></tr></thead>
+                  <tbody id="quarterly-table-body"></tbody>
+                </table>
+              </div>
+            </article>
+            <article class="panel">
+              <div class="panel-head"><h3>Recent Filings</h3></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Date</th><th>Form</th><th>Accession</th></tr></thead>
+                  <tbody id="filings-table-body"></tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="./dashboard-core.js"></script>
+  <script src="./dashboard.js"></script>
+</body>
+</html>

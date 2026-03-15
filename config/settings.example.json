@@ -1,0 +1,18 @@
+{
+  "userAgent": "MyStockDB/1.0 your-email@example.com",
+  "dataRoot": "./data",
+  "sqlitePath": "./data/db/stock_sec.db",
+  "lookbackYears": 10,
+  "includeQuarterly": true,
+  "sp500Source": "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies",
+  "secTickerMapUrl": "https://www.sec.gov/files/company_tickers.json",
+  "secSubmissionsBaseUrl": "https://data.sec.gov/submissions",
+  "secCompanyFactsBaseUrl": "https://data.sec.gov/api/xbrl/companyfacts",
+  "formsToTrack": [
+    "10-K",
+    "10-K/A",
+    "10-KT",
+    "10-Q",
+    "10-Q/A"
+  ]
+}
