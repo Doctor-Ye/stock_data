@@ -456,6 +456,28 @@ CONCEPT_MAP: dict[str, dict[str, Any]] = {
         "periodType": "duration",
         "concepts": [("us-gaap", "PaymentsToAcquirePropertyPlantAndEquipment", "USD")],
     },
+    "ShareBasedCompensationExpense": {
+        "periodType": "duration",
+        "concepts": [
+            ("us-gaap", "ShareBasedCompensation", "USD"),
+            ("us-gaap", "AllocatedShareBasedCompensationExpense", "USD"),
+        ],
+    },
+    "SpecialItems": {
+        "periodType": "duration",
+        "concepts": [
+            ("us-gaap", "RestructuringCharges", "USD"),
+            ("us-gaap", "BusinessExitCosts", "USD"),
+            ("us-gaap", "AssetImpairmentCharges", "USD"),
+            ("us-gaap", "ImpairmentLoss", "USD"),
+            ("us-gaap", "GoodwillImpairmentLoss", "USD"),
+            ("us-gaap", "GainLossOnSaleOfBusiness", "USD"),
+            ("us-gaap", "GainLossOnSaleOfOtherAssets", "USD"),
+            ("us-gaap", "GainLossOnDispositionOfAssets", "USD"),
+            ("us-gaap", "GainLossOnSaleOfInvestments", "USD"),
+            ("us-gaap", "GainLossRelatedToLitigationSettlement", "USD"),
+        ],
+    },
     "DilutedEPS": {
         "periodType": "duration",
         "concepts": [("us-gaap", "EarningsPerShareDiluted", "USD/shares")],
@@ -474,6 +496,27 @@ def fact_entries(facts: dict[str, Any], taxonomy: str, concept: str, unit: str) 
     taxonomy_node = facts.get("facts", {}).get(taxonomy, {})
     concept_node = taxonomy_node.get(concept, {})
     return list(concept_node.get("units", {}).get(unit, []) or [])
+
+
+def sum_fact_entries(facts: dict[str, Any], concepts: list[tuple[str, str, str]], selector) -> dict[str, Any] | None:
+    total = 0.0
+    found = False
+    filed: str | None = None
+    form: str | None = None
+    for taxonomy, concept, unit in concepts:
+        selected = selector(fact_entries(facts, taxonomy, concept, unit))
+        if not selected:
+            continue
+        value = selected.get("val")
+        if value is None:
+            continue
+        total += float(value)
+        filed = max(filter(None, [filed, selected.get("filed")])) if filed else selected.get("filed")
+        form = form or selected.get("form")
+        found = True
+    if not found:
+        return None
+    return {"val": total, "filed": filed, "form": form}
 
 
 def duration_days(entry: dict[str, Any]) -> int | None:
@@ -519,6 +562,13 @@ def select_annual_fact(entries: Iterable[dict[str, Any]], fiscal_year: int, peri
     return sorted(candidates, key=lambda item: ((item.get("filed") or ""), (item.get("end") or "")), reverse=True)[0]
 
 
+def select_annual_fact_sum(facts: dict[str, Any], concepts: list[tuple[str, str, str]], fiscal_year: int, period_type: str) -> dict[str, Any] | None:
+    def selector(entries: Iterable[dict[str, Any]]) -> dict[str, Any] | None:
+        return select_annual_fact(entries, fiscal_year, period_type)
+
+    return sum_fact_entries(facts, concepts, selector)
+
+
 def select_quarterly_fact(entries: Iterable[dict[str, Any]], fiscal_year: int, period_type: str) -> dict[str, Any] | None:
     quarterly_forms = {"10-Q", "10-Q/A"}
     entries = list(entries)
@@ -541,6 +591,31 @@ def select_quarterly_fact(entries: Iterable[dict[str, Any]], fiscal_year: int, p
     return sorted(candidates, key=lambda item: (item.get("filed") or "", item.get("end") or ""), reverse=True)[0]
 
 
+def select_quarterly_fact_sum(
+    facts: dict[str, Any],
+    concepts: list[tuple[str, str, str]],
+    fiscal_year: int,
+    fiscal_period: str,
+    period_type: str,
+) -> dict[str, Any] | None:
+    def selector(entries: Iterable[dict[str, Any]]) -> dict[str, Any] | None:
+        entries = list(entries)
+        candidates = []
+        for entry in entries:
+            if entry.get("fy") != fiscal_year or entry.get("fp") != fiscal_period or entry.get("form") not in {"10-Q", "10-Q/A"}:
+                continue
+            if entry.get("frame"):
+                continue
+            if period_type == "duration" and not is_quarterly_duration(entry):
+                continue
+            candidates.append(entry)
+        if not candidates:
+            return None
+        return sorted(candidates, key=lambda item: (item.get("filed") or "", item.get("end") or ""), reverse=True)[0]
+
+    return sum_fact_entries(facts, concepts, selector)
+
+
 def build_annual_financials(company: dict[str, Any], facts: dict[str, Any], settings: dict[str, Any]) -> list[dict[str, Any]]:
     start_year = datetime.now(timezone.utc).year - int(settings["lookbackYears"]) + 1
     end_year = datetime.now(timezone.utc).year
@@ -561,6 +636,8 @@ def build_annual_financials(company: dict[str, Any], facts: dict[str, Any], sett
             "CashAndEquivalents": None,
             "OperatingCashFlow": None,
             "CapitalExpenditure": None,
+            "ShareBasedCompensationExpense": None,
+            "SpecialItems": None,
             "FreeCashFlow": None,
             "DilutedEPS": None,
             "SharesOutstanding": None,
@@ -570,10 +647,13 @@ def build_annual_financials(company: dict[str, Any], facts: dict[str, Any], sett
 
         for metric_name, concepts in CONCEPT_MAP.items():
             selected = None
-            for taxonomy, concept, unit in concepts["concepts"]:
-                selected = select_annual_fact(fact_entries(facts, taxonomy, concept, unit), fiscal_year, concepts["periodType"])
-                if selected:
-                    break
+            if metric_name == "SpecialItems":
+                selected = select_annual_fact_sum(facts, concepts["concepts"], fiscal_year, concepts["periodType"])
+            else:
+                for taxonomy, concept, unit in concepts["concepts"]:
+                    selected = select_annual_fact(fact_entries(facts, taxonomy, concept, unit), fiscal_year, concepts["periodType"])
+                    if selected:
+                        break
             if selected:
                 row[metric_name] = selected.get("val")
                 row["sourceFiledDate"] = row["sourceFiledDate"] or selected.get("filed")
@@ -633,6 +713,8 @@ def build_quarterly_financials(company: dict[str, Any], facts: dict[str, Any], s
                         "CashAndEquivalents": None,
                         "OperatingCashFlow": None,
                         "CapitalExpenditure": None,
+                        "ShareBasedCompensationExpense": None,
+                        "SpecialItems": None,
                         "FreeCashFlow": None,
                         "DilutedEPS": None,
                         "SharesOutstanding": None,
@@ -650,6 +732,20 @@ def build_quarterly_financials(company: dict[str, Any], facts: dict[str, Any], s
                     row["sourceForm"] = form or row.get("sourceForm")
             if any(row.get(metric_name) is not None for row in quarter_map.values()):
                 break
+
+    for fiscal_year, fiscal_period in list(quarter_map.keys()):
+        special_sum = select_quarterly_fact_sum(
+            facts,
+            CONCEPT_MAP["SpecialItems"]["concepts"],
+            fiscal_year,
+            fiscal_period,
+            CONCEPT_MAP["SpecialItems"]["periodType"],
+        )
+        if special_sum:
+            row = quarter_map[(fiscal_year, fiscal_period)]
+            row["SpecialItems"] = special_sum.get("val")
+            row["sourceFiledDate"] = row["sourceFiledDate"] or special_sum.get("filed")
+            row["sourceForm"] = row["sourceForm"] or special_sum.get("form")
 
     rows = sorted(quarter_map.values(), key=lambda item: (item["fiscalYear"], item["fiscalPeriod"]))
     for row in rows:
@@ -703,6 +799,8 @@ CREATE TABLE IF NOT EXISTS annual_financials (
     cash_and_equivalents REAL,
     operating_cash_flow REAL,
     capital_expenditure REAL,
+    share_based_compensation_expense REAL,
+    special_items REAL,
     free_cash_flow REAL,
     diluted_eps REAL,
     shares_outstanding REAL,
@@ -726,6 +824,8 @@ CREATE TABLE IF NOT EXISTS quarterly_financials (
     cash_and_equivalents REAL,
     operating_cash_flow REAL,
     capital_expenditure REAL,
+    share_based_compensation_expense REAL,
+    special_items REAL,
     free_cash_flow REAL,
     diluted_eps REAL,
     shares_outstanding REAL,
@@ -788,8 +888,25 @@ class Database:
         conn.execute("PRAGMA temp_store=MEMORY")
         conn.execute("PRAGMA synchronous=OFF")
         conn.executescript(SCHEMA)
+        ensure_schema_migrations(conn)
         conn.row_factory = sqlite3.Row
         return conn
+
+
+def has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
+    return any(row[1] == column for row in conn.execute(f"PRAGMA table_info({table})").fetchall())
+
+
+def ensure_column(conn: sqlite3.Connection, table: str, column: str, column_type: str) -> None:
+    if not has_column(conn, table, column):
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {column_type}")
+
+
+def ensure_schema_migrations(conn: sqlite3.Connection) -> None:
+    ensure_column(conn, "annual_financials", "share_based_compensation_expense", "REAL")
+    ensure_column(conn, "annual_financials", "special_items", "REAL")
+    ensure_column(conn, "quarterly_financials", "share_based_compensation_expense", "REAL")
+    ensure_column(conn, "quarterly_financials", "special_items", "REAL")
 
 
 def upsert_companies(conn: sqlite3.Connection, companies: list[dict[str, Any]]) -> None:
@@ -842,12 +959,12 @@ def replace_annuals_for_company(conn: sqlite3.Connection, company: dict[str, Any
         INSERT INTO annual_financials (
             cik, ticker, company_name, fiscal_year, revenue, net_income, operating_income,
             total_assets, total_liabilities, shareholders_equity, cash_and_equivalents,
-            operating_cash_flow, capital_expenditure, free_cash_flow, diluted_eps,
+            operating_cash_flow, capital_expenditure, share_based_compensation_expense, special_items, free_cash_flow, diluted_eps,
             shares_outstanding, source_filed_date, source_form
         ) VALUES (
             :cik, :ticker, :companyName, :fiscalYear, :Revenue, :NetIncome, :OperatingIncome,
             :TotalAssets, :TotalLiabilities, :ShareholdersEquity, :CashAndEquivalents,
-            :OperatingCashFlow, :CapitalExpenditure, :FreeCashFlow, :DilutedEPS,
+            :OperatingCashFlow, :CapitalExpenditure, :ShareBasedCompensationExpense, :SpecialItems, :FreeCashFlow, :DilutedEPS,
             :SharesOutstanding, :sourceFiledDate, :sourceForm
         )
         """,
@@ -862,11 +979,11 @@ def replace_quarterlies_for_company(conn: sqlite3.Connection, company: dict[str,
         INSERT INTO quarterly_financials (
             cik, ticker, company_name, fiscal_year, fiscal_period, period_end, revenue, net_income, operating_income,
             total_assets, total_liabilities, shareholders_equity, cash_and_equivalents, operating_cash_flow,
-            capital_expenditure, free_cash_flow, diluted_eps, shares_outstanding, source_filed_date, source_form
+            capital_expenditure, share_based_compensation_expense, special_items, free_cash_flow, diluted_eps, shares_outstanding, source_filed_date, source_form
         ) VALUES (
             :cik, :ticker, :companyName, :fiscalYear, :fiscalPeriod, :periodEnd, :Revenue, :NetIncome, :OperatingIncome,
             :TotalAssets, :TotalLiabilities, :ShareholdersEquity, :CashAndEquivalents, :OperatingCashFlow,
-            :CapitalExpenditure, :FreeCashFlow, :DilutedEPS, :SharesOutstanding, :sourceFiledDate, :sourceForm
+            :CapitalExpenditure, :ShareBasedCompensationExpense, :SpecialItems, :FreeCashFlow, :DilutedEPS, :SharesOutstanding, :sourceFiledDate, :sourceForm
         )
         """,
         quarterlies,
@@ -1102,6 +1219,92 @@ def round_or_none(value: float | None, digits: int = 2) -> float | None:
     return round(float(value), digits)
 
 
+def ratio_or_none(numerator: float | None, denominator: float | None, digits: int = 2) -> float | None:
+    if numerator is None or denominator in (None, 0):
+        return None
+    return round(float(numerator) / float(denominator), digits)
+
+
+def adjusted_net_income_after_fee(row: dict[str, Any] | None) -> float | None:
+    if not row or row.get("net_income") is None:
+        return None
+    base = float(row["net_income"])
+    sbc = float(row["share_based_compensation_expense"]) if row.get("share_based_compensation_expense") is not None else 0.0
+    return round(base - sbc, 2)
+
+
+def normalized_net_income_proxy(row: dict[str, Any] | None) -> float | None:
+    fee_adjusted = adjusted_net_income_after_fee(row)
+    if fee_adjusted is None:
+        return None
+    special_items = abs(float(row["special_items"])) if row.get("special_items") is not None else 0.0
+    return round(fee_adjusted - special_items, 2)
+
+
+def valuation_multiple(market_cap: float | None, metric: float | None, digits: int = 2) -> float | None:
+    if market_cap is None or metric in (None, 0):
+        return None
+    if float(metric) <= 0:
+        return None
+    return round(float(market_cap) / float(metric), digits)
+
+
+def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, Any]], market_data: dict[str, Any] | None) -> dict[str, Any]:
+    recent_years = annuals[-3:]
+    latest = recent_years[-1] if recent_years else None
+    previous = recent_years[-2] if len(recent_years) > 1 else None
+    market_cap = market_data.get("marketCap") if market_data else None
+
+    latest_ps = valuation_multiple(market_cap, latest.get("revenue") if latest else None)
+    latest_operating_profit = latest.get("operating_income") if latest else None
+    latest_fee_adjusted = adjusted_net_income_after_fee(latest)
+    latest_normalized = normalized_net_income_proxy(latest)
+    previous_normalized = normalized_net_income_proxy(previous)
+    normalized_growth = growth_pct(latest_normalized, previous_normalized)
+    normalized_pe = valuation_multiple(market_cap, latest_normalized)
+    operating_margin = ratio_or_none(latest_operating_profit, latest.get("revenue") if latest else None)
+    if operating_margin is not None:
+        operating_margin = round(operating_margin * 100, 2)
+
+    lines: list[str] = []
+    if latest:
+        lines.append(
+            f"FY {latest['fiscal_year']}: PS {latest_ps if latest_ps is not None else '--'}x, "
+            f"operating profit {format_billions(latest_operating_profit) if latest_operating_profit is not None else '--'}B, "
+            f"normalized NI proxy {format_billions(latest_normalized) if latest_normalized is not None else '--'}B."
+        )
+    if normalized_growth is not None:
+        trend = "improving" if normalized_growth >= 0 else "declining"
+        lines.append(f"Normalized net income proxy growth is {normalized_growth}% YoY, trend {trend}.")
+    if normalized_pe is not None:
+        lines.append(f"Normalized P/E proxy is {normalized_pe}x based on current market cap.")
+
+    return {
+        "years": [
+            {
+                **row,
+                "psRatio": valuation_multiple(market_cap, row.get("revenue")),
+                "operatingMarginPct": round_or_none(ratio_or_none(row.get("operating_income"), row.get("revenue"), 4) * 100 if ratio_or_none(row.get("operating_income"), row.get("revenue"), 4) is not None else None, 2),
+                "feeAdjustedNetIncome": adjusted_net_income_after_fee(row),
+                "normalizedNetIncomeProxy": normalized_net_income_proxy(row),
+            }
+            for row in recent_years
+        ],
+        "latestPsRatio": latest_ps,
+        "latestOperatingProfit": latest_operating_profit,
+        "latestOperatingMarginPct": operating_margin,
+        "latestFeeAdjustedNetIncome": latest_fee_adjusted,
+        "latestNormalizedNetIncomeProxy": latest_normalized,
+        "normalizedNetIncomeGrowthPct": normalized_growth,
+        "normalizedPeProxy": normalized_pe,
+        "commentary": lines,
+        "methodology": [
+            "Fee-adjusted net income proxy = net income - stock-based compensation expense.",
+            "Normalized net income proxy = fee-adjusted net income proxy - absolute special items.",
+        ],
+    }
+
+
 def select_latest_balance_sheet_row(
     quarterlies: list[dict[str, Any]],
     annuals: list[dict[str, Any]],
@@ -1223,6 +1426,7 @@ def build_web_data(settings: dict[str, Any]) -> None:
         latest_quarter = company_quarterlies[-1] if company_quarterlies else None
         latest_filing = company_filings[0] if company_filings else None
         market_data = build_market_snapshot(market_quotes_by_ticker.get(primary_ticker), company_annuals, company_quarterlies)
+        analysis = build_three_year_analysis(primary_company, company_annuals, market_data)
 
         summary = {
             "ticker": primary_ticker,
@@ -1238,6 +1442,7 @@ def build_web_data(settings: dict[str, Any]) -> None:
             "latestQuarter": latest_quarter,
             "latestFiling": latest_filing,
             "marketData": market_data,
+            "analysis": analysis,
             "revenueBillions": format_billions(latest_annual["revenue"]) if latest_annual else None,
             "netIncomeBillions": format_billions(latest_annual["net_income"]) if latest_annual else None,
             "freeCashFlowBillions": format_billions(latest_annual["free_cash_flow"]) if latest_annual else None,
@@ -1250,6 +1455,11 @@ def build_web_data(settings: dict[str, Any]) -> None:
                 previous_annual["net_income"] if previous_annual else None,
             ),
             "marketCapBillions": format_billions(market_data["marketCap"]) if market_data and market_data.get("marketCap") is not None else None,
+            "psRatio": analysis["latestPsRatio"],
+            "operatingProfit": analysis["latestOperatingProfit"],
+            "feeAdjustedNetIncome": analysis["latestFeeAdjustedNetIncome"],
+            "normalizedNetIncomeGrowthPct": analysis["normalizedNetIncomeGrowthPct"],
+            "normalizedPeProxy": analysis["normalizedPeProxy"],
         }
         summaries.append(summary)
 
@@ -1299,6 +1509,15 @@ def build_web_data(settings: dict[str, Any]) -> None:
         key=lambda item: item["latestAnnual"]["net_income"],
         reverse=True,
     )[:10]
+    top_ps = sorted(
+        [item for item in summaries if item.get("psRatio") is not None],
+        key=lambda item: item["psRatio"],
+    )[:10]
+    top_normalized_growth = sorted(
+        [item for item in summaries if item.get("normalizedNetIncomeGrowthPct") is not None],
+        key=lambda item: item["normalizedNetIncomeGrowthPct"],
+        reverse=True,
+    )[:10]
     top_market_cap = sorted(
         [item for item in summaries if item.get("marketData") and item["marketData"].get("marketCap") is not None],
         key=lambda item: item["marketData"]["marketCap"],
@@ -1318,6 +1537,8 @@ def build_web_data(settings: dict[str, Any]) -> None:
         "highlights": {
             "topRevenue": top_revenue,
             "topProfit": top_profit,
+            "topPs": top_ps,
+            "topNormalizedGrowth": top_normalized_growth,
             "topMarketCap": top_market_cap,
             "latestFilings": latest_filings,
         },

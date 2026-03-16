@@ -57,6 +57,30 @@
       </article>
       <article class="panel overview-table">
         <div class="panel-head">
+          <h3>Lowest P/S</h3>
+          <p>Current market cap / latest annual revenue</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ticker</th><th>Company</th><th>P/S</th></tr></thead>
+            <tbody id="top-ps-body"></tbody>
+          </table>
+        </div>
+      </article>
+      <article class="panel overview-table">
+        <div class="panel-head">
+          <h3>Top Core Growth</h3>
+          <p>Normalized net income proxy YoY</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ticker</th><th>Company</th><th>YoY</th></tr></thead>
+            <tbody id="top-normalized-growth-body"></tbody>
+          </table>
+        </div>
+      </article>
+      <article class="panel overview-table">
+        <div class="panel-head">
           <h3>Latest Filings</h3>
           <p>Most recent SEC filings</p>
         </div>
@@ -78,6 +102,11 @@
             <option value="revenue-desc">Revenue Desc</option>
             <option value="netIncome-desc">Net Income Desc</option>
             <option value="marketCap-desc">Market Cap Desc</option>
+            <option value="ps-asc">P/S Asc</option>
+            <option value="operatingProfit-desc">Operating Profit Desc</option>
+            <option value="feeAdjustedNetIncome-desc">Fee-Adjusted NI Desc</option>
+            <option value="normalizedGrowth-desc">Normalized NI Growth Desc</option>
+            <option value="normalizedPe-asc">Normalized P/E Asc</option>
             <option value="ticker-asc">Ticker Asc</option>
             <option value="filing-desc">Latest Filing</option>
           </select>
@@ -104,26 +133,31 @@
               <div id="quarterly-revenue-chart"></div>
             </article>
             <article class="panel chart-span">
-              <div class="panel-head"><h3>Free Cash Flow</h3><p>Annual trend</p></div>
-              <div id="annual-fcf-chart"></div>
+              <div class="panel-head"><h3>Core Net Income Proxy</h3><p>Last 3 fiscal years</p></div>
+              <div id="annual-core-profit-chart"></div>
             </article>
           </div>
+          <article class="panel">
+            <div class="panel-head"><h3>Interpretation</h3><p>Auto-generated 3-year reading</p></div>
+            <ul id="interpretation-list"></ul>
+            <ul id="methodology-list"></ul>
+          </article>
           <div class="tables tables-three">
             <article class="panel">
               <div class="panel-head"><h3>Annual Financials</h3></div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>FY</th><th>Revenue</th><th>Net Income</th><th>FCF</th><th>EPS</th></tr></thead>
+                  <thead><tr><th>FY</th><th>Revenue</th><th>Operating Profit</th><th>Net Income</th><th>SBC</th><th>Special Items</th></tr></thead>
                   <tbody id="annual-table-body"></tbody>
                 </table>
               </div>
             </article>
             <article class="panel">
-              <div class="panel-head"><h3>Quarterly Financials</h3></div>
+              <div class="panel-head"><h3>3Y Analysis</h3></div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Quarter</th><th>Revenue</th><th>Net Income</th><th>FCF</th><th>EPS</th></tr></thead>
-                  <tbody id="quarterly-table-body"></tbody>
+                  <thead><tr><th>FY</th><th>P/S</th><th>Operating Profit</th><th>Fee-Adjusted NI</th><th>Normalized NI</th><th>Op Margin</th></tr></thead>
+                  <tbody id="analysis-table-body"></tbody>
                 </table>
               </div>
             </article>

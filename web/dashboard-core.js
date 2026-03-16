@@ -82,6 +82,12 @@
       renderRows('top-profit-body', summary.highlights.topProfit || [], (item) => (
         `<td>${item.ticker}</td><td>${item.security || item.name}</td><td>${fmtCurrencyCompact(item.latestAnnual?.net_income)}</td>`
       ));
+      renderRows('top-ps-body', summary.highlights.topPs || [], (item) => (
+        `<td>${item.ticker}</td><td>${item.security || item.name}</td><td>${fmtRatio(item.psRatio)}</td>`
+      ));
+      renderRows('top-normalized-growth-body', summary.highlights.topNormalizedGrowth || [], (item) => (
+        `<td>${item.ticker}</td><td>${item.security || item.name}</td><td>${fmtPercent(item.normalizedNetIncomeGrowthPct)}</td>`
+      ));
       renderRows('latest-filings-body', summary.highlights.latestFilings || [], (item) => (
         `<td>${fmtDate(item.latestFiling?.filing_date)}</td><td>${item.ticker}</td><td>${item.latestFiling?.form || '--'}</td>`
       ));
@@ -103,6 +109,11 @@
         if (sort === 'filing-desc') return (b.latestFiling?.filing_date || '').localeCompare(a.latestFiling?.filing_date || '');
         if (sort === 'netIncome-desc') return (b.latestAnnual?.net_income || 0) - (a.latestAnnual?.net_income || 0);
         if (sort === 'marketCap-desc') return (b.marketData?.marketCap || 0) - (a.marketData?.marketCap || 0);
+        if (sort === 'ps-asc') return (a.psRatio || Number.MAX_SAFE_INTEGER) - (b.psRatio || Number.MAX_SAFE_INTEGER);
+        if (sort === 'operatingProfit-desc') return (b.operatingProfit || 0) - (a.operatingProfit || 0);
+        if (sort === 'feeAdjustedNetIncome-desc') return (b.feeAdjustedNetIncome || 0) - (a.feeAdjustedNetIncome || 0);
+        if (sort === 'normalizedGrowth-desc') return (b.normalizedNetIncomeGrowthPct || -Infinity) - (a.normalizedNetIncomeGrowthPct || -Infinity);
+        if (sort === 'normalizedPe-asc') return (a.normalizedPeProxy || Number.MAX_SAFE_INTEGER) - (b.normalizedPeProxy || Number.MAX_SAFE_INTEGER);
         return (b.latestAnnual?.revenue || 0) - (a.latestAnnual?.revenue || 0);
       });
       return companies;
@@ -126,8 +137,9 @@
           <p class="company-name">${item.security || item.name}</p>
           <div class="pill-row">
             <span class="pill">${item.sector || '--'}</span>
-            <span class="pill">${config.text.listMarketCap} ${fmtCurrencyCompact(item.marketData?.marketCap)}</span>
-            <span class="pill">${config.text.listNetIncome} ${fmtCurrencyCompact(item.latestAnnual?.net_income)}</span>
+            <span class="pill">${config.text.listPs} ${fmtRatio(item.psRatio)}</span>
+            <span class="pill">${config.text.listOpProfit} ${fmtCurrencyCompact(item.operatingProfit)}</span>
+            <span class="pill">${config.text.listCoreGrowth} ${fmtPercent(item.normalizedNetIncomeGrowthPct)}</span>
           </div>
         </article>
       `).join('');
@@ -157,6 +169,7 @@
       const latestQuarter = company.latestQuarter || {};
       const latestFiling = company.latestFiling || {};
       const marketData = company.marketData || {};
+      const analysis = company.analysis || {};
       const aliasLine = company.aliases && company.aliases.length > 1 ? `<p>${config.text.aliases}: ${company.aliases.join(', ')}</p>` : '';
 
       document.getElementById('company-head').innerHTML = `
@@ -170,23 +183,30 @@
       document.getElementById('metrics-grid').innerHTML = [
         metricCard(config.text.previousClose, fmtPrice(marketData.price), config.text.asOf(marketData.priceDate)),
         metricCard(config.text.marketCap, fmtCurrencyCompact(marketData.marketCap), config.text.balanceSheetBasis(marketData.equitySourceForm, marketData.equitySourceFiledDate)),
+        metricCard(config.text.psRatio, fmtRatio(company.psRatio), config.text.fiscalYear(latestAnnual.fiscal_year)),
+        metricCard(config.text.operatingProfit, fmtCurrencyCompact(company.operatingProfit), config.text.operatingMargin(analysis.latestOperatingMarginPct)),
+        metricCard(config.text.feeAdjustedNetIncome, fmtCurrencyCompact(company.feeAdjustedNetIncome), config.text.proxyMetric),
+        metricCard(config.text.normalizedGrowth, fmtPercent(company.normalizedNetIncomeGrowthPct), config.text.proxyMetric),
+        metricCard(config.text.normalizedPe, fmtRatio(company.normalizedPeProxy), config.text.proxyMetric),
         metricCard(config.text.peRatio, fmtRatio(marketData.peRatio), marketData.peRatio == null ? config.text.peUnavailable : config.text.earningsBasis(latestAnnual.fiscal_year)),
         metricCard(config.text.pbRatio, fmtRatio(marketData.pbRatio), marketData.pbRatio == null ? config.text.pbUnavailable : config.text.balanceSheetBasis(marketData.equitySourceForm, marketData.equitySourceFiledDate)),
         metricCard(config.text.annualRevenue, fmtCurrencyCompact(latestAnnual.revenue), config.text.fiscalYear(latestAnnual.fiscal_year)),
         metricCard(config.text.annualNetIncome, fmtCurrencyCompact(latestAnnual.net_income), config.text.fiscalYear(latestAnnual.fiscal_year)),
-        metricCard(config.text.freeCashFlow, fmtCurrencyCompact(latestAnnual.free_cash_flow), config.text.fiscalYear(latestAnnual.fiscal_year)),
         metricCard(config.text.latestFiling, latestFiling.form || '--', fmtDate(latestFiling.filing_date)),
       ].join('');
 
       drawSeriesChart('annual-revenue-chart', detail.annuals.map((row) => ({ label: String(row.fiscal_year), value: row.revenue })), config.text.annualRevenue);
       drawSeriesChart('quarterly-revenue-chart', detail.quarterlies.slice(-12).map((row) => ({ label: `${row.fiscal_year}-${row.fiscal_period}`, value: row.revenue })), config.text.quarterlyRevenue);
-      drawSeriesChart('annual-fcf-chart', detail.annuals.map((row) => ({ label: String(row.fiscal_year), value: row.free_cash_flow })), config.text.freeCashFlow);
+      drawSeriesChart('annual-core-profit-chart', (analysis.years || []).map((row) => ({ label: String(row.fiscal_year), value: row.normalizedNetIncomeProxy })), config.text.normalizedNetIncome);
+
+      document.getElementById('interpretation-list').innerHTML = (analysis.commentary || []).map((line) => `<li>${line}</li>`).join('');
+      document.getElementById('methodology-list').innerHTML = (analysis.methodology || []).map((line) => `<li>${line}</li>`).join('');
 
       document.getElementById('annual-table-body').innerHTML = detail.annuals.slice().reverse().map((row) => (
-        `<tr><td>${row.fiscal_year}</td><td>${fmtCurrencyCompact(row.revenue)}</td><td>${fmtCurrencyCompact(row.net_income)}</td><td>${fmtCurrencyCompact(row.free_cash_flow)}</td><td>${fmtNumber(row.diluted_eps)}</td></tr>`
+        `<tr><td>${row.fiscal_year}</td><td>${fmtCurrencyCompact(row.revenue)}</td><td>${fmtCurrencyCompact(row.operating_income)}</td><td>${fmtCurrencyCompact(row.net_income)}</td><td>${fmtCurrencyCompact(row.share_based_compensation_expense)}</td><td>${fmtCurrencyCompact(row.special_items)}</td></tr>`
       )).join('');
-      document.getElementById('quarterly-table-body').innerHTML = detail.quarterlies.slice().reverse().slice(0, 12).map((row) => (
-        `<tr><td>${row.fiscal_year} ${row.fiscal_period}</td><td>${fmtCurrencyCompact(row.revenue)}</td><td>${fmtCurrencyCompact(row.net_income)}</td><td>${fmtCurrencyCompact(row.free_cash_flow)}</td><td>${fmtNumber(row.diluted_eps)}</td></tr>`
+      document.getElementById('analysis-table-body').innerHTML = (analysis.years || []).slice().reverse().map((row) => (
+        `<tr><td>${row.fiscal_year}</td><td>${fmtRatio(row.psRatio)}</td><td>${fmtCurrencyCompact(row.operating_income)}</td><td>${fmtCurrencyCompact(row.feeAdjustedNetIncome)}</td><td>${fmtCurrencyCompact(row.normalizedNetIncomeProxy)}</td><td>${fmtPercent(row.operatingMarginPct)}</td></tr>`
       )).join('');
       document.getElementById('filings-table-body').innerHTML = detail.filings.slice(0, 15).map((row) => (
         `<tr><td>${fmtDate(row.filing_date)}</td><td>${row.form || '--'}</td><td>${row.accession_number}</td></tr>`

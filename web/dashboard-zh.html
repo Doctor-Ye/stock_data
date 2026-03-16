@@ -57,6 +57,30 @@
       </article>
       <article class="panel overview-table">
         <div class="panel-head">
+          <h3>市销率最低</h3>
+          <p>当前市值 / 最新年度营收</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>代码</th><th>公司</th><th>PS</th></tr></thead>
+            <tbody id="top-ps-body"></tbody>
+          </table>
+        </div>
+      </article>
+      <article class="panel overview-table">
+        <div class="panel-head">
+          <h3>扣非增速前十</h3>
+          <p>扣非净利润代理同比</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>代码</th><th>公司</th><th>增速</th></tr></thead>
+            <tbody id="top-normalized-growth-body"></tbody>
+          </table>
+        </div>
+      </article>
+      <article class="panel overview-table">
+        <div class="panel-head">
           <h3>最新财报</h3>
           <p>最近 SEC 更新</p>
         </div>
@@ -78,6 +102,11 @@
             <option value="revenue-desc">营收降序</option>
             <option value="netIncome-desc">净利润降序</option>
             <option value="marketCap-desc">市值降序</option>
+            <option value="ps-asc">市销率升序</option>
+            <option value="operatingProfit-desc">营业利润降序</option>
+            <option value="feeAdjustedNetIncome-desc">扣费净利润降序</option>
+            <option value="normalizedGrowth-desc">扣非净利润增速降序</option>
+            <option value="normalizedPe-asc">扣非净利润市盈率升序</option>
             <option value="ticker-asc">代码升序</option>
             <option value="filing-desc">最新财报</option>
           </select>
@@ -104,26 +133,31 @@
               <div id="quarterly-revenue-chart"></div>
             </article>
             <article class="panel chart-span">
-              <div class="panel-head"><h3>自由现金流</h3><p>年度趋势</p></div>
-              <div id="annual-fcf-chart"></div>
+              <div class="panel-head"><h3>扣非净利润代理</h3><p>近 3 个财年</p></div>
+              <div id="annual-core-profit-chart"></div>
             </article>
           </div>
+          <article class="panel">
+            <div class="panel-head"><h3>财报解读</h3><p>自动生成的近 3 年解读</p></div>
+            <ul id="interpretation-list"></ul>
+            <ul id="methodology-list"></ul>
+          </article>
           <div class="tables tables-three">
             <article class="panel">
               <div class="panel-head"><h3>年度财务</h3></div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>财年</th><th>营收</th><th>净利润</th><th>自由现金流</th><th>EPS</th></tr></thead>
+                  <thead><tr><th>财年</th><th>营收</th><th>营业利润</th><th>净利润</th><th>股权激励</th><th>特殊项目</th></tr></thead>
                   <tbody id="annual-table-body"></tbody>
                 </table>
               </div>
             </article>
             <article class="panel">
-              <div class="panel-head"><h3>季度财务</h3></div>
+              <div class="panel-head"><h3>三年分析</h3></div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>季度</th><th>营收</th><th>净利润</th><th>自由现金流</th><th>EPS</th></tr></thead>
-                  <tbody id="quarterly-table-body"></tbody>
+                  <thead><tr><th>财年</th><th>PS</th><th>营业利润</th><th>扣费净利润</th><th>扣非净利润</th><th>营业利润率</th></tr></thead>
+                  <tbody id="analysis-table-body"></tbody>
                 </table>
               </div>
             </article>
