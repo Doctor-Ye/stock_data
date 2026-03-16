@@ -1,5 +1,5 @@
 param(
-    [string]$PythonExe = "C:\Users\admin\AppData\Local\Programs\Python\Python312\python.exe"
+    [string]$PythonExe = (Join-Path $PSScriptRoot "..\tools\python312\runtime\python.exe")
 )
 
 $ErrorActionPreference = "Stop"
