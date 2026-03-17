@@ -146,3 +146,13 @@ http://127.0.0.1:8080/dashboard.html
 - 该方案依赖 SEC 的 `submissions` 与 `companyfacts` JSON 接口，不解析 PDF 或 HTML 报表正文。
 - 标普 500 成分股列表默认抓取 Wikipedia 页面表格；财报和财务数据来自 SEC。
 - Python 版本使用标准库和 SQLite，不额外依赖第三方包。
+## Universe Rules
+
+- Default universe = S&P 500 + US-listed equities above `universeMinMarketCapUsd` + all ADRs + `config/additional_companies.json` manual overrides.
+- Large-cap screening uses latest SEC share count multiplied by the latest market quote.
+- ADR support includes annual forms `20-F`, `20-F/A`, `40-F`, and `40-F/A`.
+- Partial sync is supported via `--limit`, and checkpoint resume is supported via `--resume`, which continues after `sync_state.last_processed_ticker`.
+- Recommended workflow:
+- `python .\scripts\sec_db.py refresh-companies` to rebuild and stage the universe only
+- `powershell -ExecutionPolicy Bypass -File .\scripts\Sync-Full-Python.ps1 -Resume -Limit 100` to sync staged companies in batches
+- To keep running batches until the staged universe is done, use `powershell -ExecutionPolicy Bypass -File .\scripts\Sync-Staged-Until-Complete.ps1 -BatchSize 100`

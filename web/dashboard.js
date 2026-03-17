@@ -17,6 +17,7 @@
     listPs: 'P/S',
     listOpProfit: 'Op Profit',
     listCoreGrowth: 'Core NI YoY',
+    listNormalizedPe: 'Normalized P/E',
     aliases: 'Aliases',
     previousClose: 'Previous Close',
     marketCap: 'Market Cap',

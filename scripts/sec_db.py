@@ -23,6 +23,29 @@ from typing import Any, Iterable
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SETTINGS_PATH = PROJECT_ROOT / "config" / "settings.json"
 FALLBACK_SETTINGS_PATH = PROJECT_ROOT / "config" / "settings.example.json"
+ANNUAL_FORMS = {"10-K", "10-K/A", "10-KT", "20-F", "20-F/A", "40-F", "40-F/A"}
+QUARTERLY_FORMS = {"10-Q", "10-Q/A"}
+ADR_NAME_RE = re.compile(r"\badrs?\b|\bads\b|american depositary|depositary receipt", re.I)
+NEGATIVE_EQUITY_NAME_RE = re.compile(
+    r"\betf\b|\betn\b|\bexchange traded\b|\bmutual fund\b|\bfund\b|\btrust\b|"
+    r"\bpreferred\b|\bpfd\b|\bwarrants?\b|\brights?\b|\bnotes?\b|\bdebentures?\b|"
+    r"\bbeneficial interest\b|\bunits?\b",
+    re.I,
+)
+POSITIVE_EQUITY_NAME_RE = re.compile(
+    r"\bcommon stock\b|\bcommon shares?\b|\bordinary shares?\b|\bcapital stock\b|"
+    r"\bsubordinate voting shares?\b|\bvoting shares?\b|\bclass [a-z] common\b|"
+    r"\bclass [a-z] ordinary\b|\bclass [a-z] shares?\b",
+    re.I,
+)
+EXCHANGE_CODE_MAP = {
+    "N": "NYSE",
+    "A": "NYSE American",
+    "P": "NYSE Arca",
+    "Q": "Nasdaq",
+    "Z": "Cboe",
+    "V": "IEX",
+}
 
 
 def utc_now_iso() -> str:
@@ -41,10 +64,14 @@ def load_settings() -> dict[str, Any]:
     settings["dataRootResolved"] = str(data_root)
     settings.setdefault("additionalCompaniesPath", str((PROJECT_ROOT / "config" / "additional_companies.json").resolve()))
     settings.setdefault("sqlitePath", str((data_root / "db" / "stock_sec.db").resolve()))
-    settings.setdefault("formsToTrack", ["10-K", "10-K/A", "10-KT", "10-Q", "10-Q/A"])
+    settings.setdefault("formsToTrack", sorted(ANNUAL_FORMS | QUARTERLY_FORMS))
     settings.setdefault("lookbackYears", 10)
     settings.setdefault("marketDataBaseUrl", "https://stooq.com/q/l/")
     settings.setdefault("marketDataSource", "stooq")
+    settings.setdefault("yahooChartBaseUrl", "https://query1.finance.yahoo.com/v8/finance/chart")
+    settings.setdefault("nasdaqListedUrl", "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt")
+    settings.setdefault("otherListedUrl", "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt")
+    settings.setdefault("universeMinMarketCapUsd", 10_000_000_000)
     return settings
 
 
@@ -72,6 +99,16 @@ def read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def get_or_fetch_text(url: str, path: Path, settings: dict[str, Any], force: bool = False) -> str:
+    if path.exists() and not force:
+        return path.read_text(encoding="utf-8")
+    payload = fetch_text(url, settings)
+    ensure_dir(path.parent)
+    path.write_text(payload, encoding="utf-8")
+    time.sleep(0.2)
+    return payload
+
+
 def load_companies_snapshot(settings: dict[str, Any]) -> list[dict[str, Any]]:
     snapshot_path = Path(settings["dataRootResolved"]) / "db" / "companies.json"
     data = read_json(snapshot_path)
@@ -87,9 +124,18 @@ def load_companies_snapshot(settings: dict[str, Any]) -> list[dict[str, Any]]:
                 "subIndustry": row.get("subIndustry", row.get("sub_industry")),
                 "headquarters": row["headquarters"],
                 "dateAdded": row.get("dateAdded", row.get("date_added")),
+                "listingExchange": row.get("listingExchange", row.get("listing_exchange")),
+                "isAdr": bool(row.get("isAdr", row.get("is_adr"))),
+                "universeSource": row.get("universeSource", row.get("universe_source")),
             }
         )
     return companies
+
+
+def load_market_quotes_snapshot(settings: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    snapshot_path = Path(settings["dataRootResolved"]) / "db" / "market_quotes.json"
+    rows = read_json(snapshot_path) or []
+    return {row["ticker"]: row for row in rows if row.get("ticker")}
 
 
 def normalize_ticker(value: str | None) -> str | None:
@@ -118,6 +164,13 @@ def fetch_text(url: str, settings: dict[str, Any]) -> str:
         try:
             with urllib.request.urlopen(request, timeout=60) as response:
                 return response.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as exc:
+            if exc.code in {400, 401, 403, 404}:
+                raise RuntimeError(f"Failed to fetch {url}: HTTP {exc.code}") from exc
+            last_error = exc
+            wait_seconds = min(30, attempt * 2)
+            append_log(settings, f"HTTP retry {attempt}/{attempts} for {url}: {exc}")
+            time.sleep(wait_seconds)
         except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, socket_timeout, http.client.RemoteDisconnected, ConnectionResetError) as exc:
             last_error = exc
             wait_seconds = min(30, attempt * 2)
@@ -207,24 +260,334 @@ def get_additional_companies(settings: dict[str, Any]) -> list[dict[str, Any]]:
                 "headquarters": row.get("headquarters"),
                 "dateAdded": row.get("dateAdded"),
                 "cikFromSource": row.get("cik"),
+                "listingExchange": row.get("listingExchange"),
+                "isAdr": bool(row.get("isAdr")),
+                "universeSource": "manual",
             }
         )
     return items
 
 
-def resolve_companies(settings: dict[str, Any]) -> list[dict[str, Any]]:
+def parse_symbol_directory(text: str, ticker_key: str, market_name: str, exchange_key: str | None = None) -> list[dict[str, Any]]:
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    lines = [line for line in lines if not line.startswith("File Creation Time")]
+    if not lines:
+        return []
+
+    reader = csv.DictReader(lines, delimiter="|")
+    items: list[dict[str, Any]] = []
+    for row in reader:
+        ticker = normalize_ticker(row.get(ticker_key))
+        security = (row.get("Security Name") or "").strip()
+        if not ticker or not security:
+            continue
+        if (row.get("ETF") or "N").upper() != "N":
+            continue
+        if (row.get("Test Issue") or "N").upper() != "N":
+            continue
+        if (row.get("NextShares") or "N").upper() != "N":
+            continue
+        exchange_code = (row.get(exchange_key) or "").strip().upper() if exchange_key else "Q"
+        items.append(
+            {
+                "ticker": ticker,
+                "security": security,
+                "listingExchange": EXCHANGE_CODE_MAP.get(exchange_code, market_name),
+            }
+        )
+    return items
+
+
+def is_adr_security_name(security_name: str | None) -> bool:
+    if not security_name:
+        return False
+    return bool(ADR_NAME_RE.search(security_name))
+
+
+def is_equity_security_name(security_name: str | None) -> bool:
+    if not security_name:
+        return False
+    if is_adr_security_name(security_name):
+        return True
+    if NEGATIVE_EQUITY_NAME_RE.search(security_name):
+        return False
+    return bool(POSITIVE_EQUITY_NAME_RE.search(security_name))
+
+
+def get_us_listed_equities(settings: dict[str, Any], force: bool = False) -> list[dict[str, Any]]:
+    reference_root = Path(settings["dataRootResolved"]) / "raw" / "reference"
+    nasdaq_text = get_or_fetch_text(
+        settings["nasdaqListedUrl"],
+        reference_root / "nasdaqlisted.txt",
+        settings,
+        force=force,
+    )
+    other_text = get_or_fetch_text(
+        settings["otherListedUrl"],
+        reference_root / "otherlisted.txt",
+        settings,
+        force=force,
+    )
+
+    merged: dict[str, dict[str, Any]] = {}
+    for row in parse_symbol_directory(nasdaq_text, "Symbol", "Nasdaq"):
+        merged[row["ticker"]] = row
+    for row in parse_symbol_directory(other_text, "ACT Symbol", "Other", exchange_key="Exchange"):
+        merged.setdefault(row["ticker"], row)
+
+    return [
+        {
+            **row,
+            "isAdr": is_adr_security_name(row["security"]),
+        }
+        for row in merged.values()
+        if is_equity_security_name(row["security"])
+    ]
+
+
+def latest_shares_outstanding(facts: dict[str, Any]) -> float | None:
+    candidates: list[dict[str, Any]] = []
+    for taxonomy, concept, unit in CONCEPT_MAP["SharesOutstanding"]["concepts"]:
+        for entry in fact_entries(facts, taxonomy, concept, unit):
+            form = (entry.get("form") or "").upper()
+            if form and form not in ANNUAL_FORMS and form not in QUARTERLY_FORMS:
+                continue
+            if entry.get("frame"):
+                continue
+            value = entry.get("val")
+            if value in (None, "", 0):
+                continue
+            candidates.append(entry)
+
+    if not candidates:
+        return None
+
+    latest = sorted(
+        candidates,
+        key=lambda item: (item.get("filed") or "", item.get("end") or ""),
+        reverse=True,
+    )[0]
+    try:
+        return float(latest["val"])
+    except (TypeError, ValueError, KeyError):
+        return None
+
+
+def build_company_seed(
+    ticker: str,
+    cik: str,
+    name: str,
+    security: str | None,
+    sector: str | None = None,
+    sub_industry: str | None = None,
+    headquarters: str | None = None,
+    date_added: str | None = None,
+    listing_exchange: str | None = None,
+    is_adr: bool = False,
+    universe_source: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "ticker": ticker,
+        "cik": cik,
+        "name": name,
+        "security": security or name or ticker,
+        "sector": sector,
+        "subIndustry": sub_industry,
+        "headquarters": headquarters,
+        "dateAdded": date_added,
+        "listingExchange": listing_exchange,
+        "isAdr": is_adr,
+        "universeSource": universe_source,
+    }
+
+
+def merge_company_rows(existing: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(existing)
+    for key in ("name", "security", "sector", "subIndustry", "headquarters", "dateAdded", "listingExchange"):
+        if incoming.get(key):
+            merged[key] = incoming[key]
+    merged["isAdr"] = bool(existing.get("isAdr")) or bool(incoming.get("isAdr"))
+
+    sources = {
+        item.strip()
+        for item in str(existing.get("universeSource") or "").split(",")
+        if item.strip()
+    }
+    sources.update(
+        item.strip()
+        for item in str(incoming.get("universeSource") or "").split(",")
+        if item.strip()
+    )
+    merged["universeSource"] = ",".join(sorted(sources)) if sources else None
+    return merged
+
+
+def estimate_market_cap(
+    company: dict[str, Any],
+    settings: dict[str, Any],
+    cached_quotes: dict[str, dict[str, Any]],
+) -> float | None:
+    quote = cached_quotes.get(company["ticker"])
+    if not quote or quote.get("close") in (None, 0):
+        quote = fetch_market_quote(company["ticker"], settings)
+        if quote:
+            cached_quotes[company["ticker"]] = quote
+        time.sleep(0.1)
+    if not quote or quote.get("close") in (None, 0):
+        return None
+
+    facts = get_company_facts(company, settings, force=False)
+    shares = latest_shares_outstanding(facts)
+    if shares in (None, 0):
+        return None
+    return float(quote["close"]) * float(shares)
+
+
+def universe_checkpoint_path(settings: dict[str, Any]) -> Path:
+    return Path(settings["dataRootResolved"]) / "db" / "universe_screen_checkpoint.json"
+
+
+def load_universe_checkpoint(settings: dict[str, Any], force: bool = False) -> dict[str, Any]:
+    if force:
+        return {"completed": False, "lastTicker": None, "total": 0, "accepted": []}
+    payload = read_json(universe_checkpoint_path(settings)) or {}
+    return {
+        "completed": bool(payload.get("completed")),
+        "lastTicker": normalize_ticker(payload.get("lastTicker")),
+        "total": int(payload.get("total") or 0),
+        "accepted": list(payload.get("accepted") or []),
+    }
+
+
+def save_universe_checkpoint(settings: dict[str, Any], total: int, accepted: list[dict[str, Any]], last_ticker: str | None, completed: bool) -> None:
+    write_json(
+        universe_checkpoint_path(settings),
+        {
+            "updatedAtUtc": utc_now_iso(),
+            "total": total,
+            "lastTicker": last_ticker,
+            "completed": completed,
+            "accepted": accepted,
+        },
+    )
+
+
+def load_staged_universe_from_checkpoint(settings: dict[str, Any]) -> list[dict[str, Any]]:
+    checkpoint = load_universe_checkpoint(settings, force=False)
+    companies: list[dict[str, Any]] = []
+    for row in checkpoint["accepted"]:
+        companies.append(
+            build_company_seed(
+                ticker=row["ticker"],
+                cik=row["cik"],
+                name=row["name"],
+                security=row.get("security"),
+                sector=row.get("sector"),
+                sub_industry=row.get("subIndustry"),
+                headquarters=row.get("headquarters"),
+                date_added=row.get("dateAdded"),
+                listing_exchange=row.get("listingExchange"),
+                is_adr=bool(row.get("isAdr")),
+                universe_source=row.get("universeSource"),
+            )
+        )
+    return companies
+
+
+def get_expanded_universe_candidates(settings: dict[str, Any], force: bool = False) -> list[dict[str, Any]]:
+    ticker_map = {item["ticker"]: item for item in get_sec_ticker_map(settings)}
+    cached_quotes = load_market_quotes_snapshot(settings)
+    min_market_cap = float(settings["universeMinMarketCapUsd"])
+    listings = get_us_listed_equities(settings, force=force)
+    total = len(listings)
+    checkpoint = load_universe_checkpoint(settings, force=force)
+    rows: list[dict[str, Any]] = list(checkpoint["accepted"])
+
+    if checkpoint["completed"] and checkpoint["total"] == total:
+        append_log(settings, f"Universe screen cache hit: {len(rows)} accepted candidates")
+        return rows
+
+    start_index = 0
+    if checkpoint["lastTicker"]:
+        for index, listing in enumerate(listings):
+            if listing["ticker"] == checkpoint["lastTicker"]:
+                start_index = index + 1
+                break
+        if start_index:
+            append_log(settings, f"Universe screen resuming after {checkpoint['lastTicker']} [{start_index}/{total}]")
+
+    for index in range(start_index, total):
+        listing = listings[index]
+        ticker = listing["ticker"]
+        match = ticker_map.get(ticker)
+        if not match and "-" in ticker:
+            match = ticker_map.get(ticker.replace("-", "."))
+        if not match:
+            save_universe_checkpoint(settings, total, rows, ticker, False)
+            continue
+
+        company = build_company_seed(
+            ticker=ticker,
+            cik=match["cik"],
+            name=match["title"],
+            security=listing["security"],
+            listing_exchange=listing.get("listingExchange"),
+            is_adr=bool(listing.get("isAdr")),
+            universe_source="adr" if listing.get("isAdr") else "market-cap",
+        )
+
+        if company["isAdr"]:
+            rows.append(company)
+            save_universe_checkpoint(settings, total, rows, ticker, False)
+            continue
+
+        if (index + 1) % 250 == 0:
+            append_log(settings, f"Universe screen [{index + 1}/{total}] {ticker}")
+
+        try:
+            market_cap = estimate_market_cap(company, settings, cached_quotes)
+        except Exception as exc:
+            append_log(settings, f"Universe screen failed for {ticker}: {exc}")
+            save_universe_checkpoint(settings, total, rows, ticker, False)
+            continue
+
+        if market_cap is not None and market_cap >= min_market_cap:
+            rows.append(company)
+        save_universe_checkpoint(settings, total, rows, ticker, False)
+
+    save_universe_checkpoint(settings, total, rows, listings[-1]["ticker"] if listings else None, True)
+    return rows
+
+
+def resolve_companies(settings: dict[str, Any], force: bool = False) -> list[dict[str, Any]]:
     data_root = Path(settings["dataRootResolved"])
     db_root = data_root / "db"
     ticker_map = {item["ticker"]: item for item in get_sec_ticker_map(settings)}
-    companies: list[dict[str, Any]] = []
-    seen_tickers: set[str] = set()
+    company_map: dict[str, dict[str, Any]] = {}
 
-    constituents = get_sp500_constituents(settings)
-    constituents.extend(get_additional_companies(settings))
-
-    for row in constituents:
-        if row["ticker"] in seen_tickers:
+    for row in get_sp500_constituents(settings):
+        match = ticker_map.get(row["ticker"])
+        if not match and "-" in row["ticker"]:
+            match = ticker_map.get(row["ticker"].replace("-", "."))
+        if not match:
             continue
+        seed = build_company_seed(
+            ticker=row["ticker"],
+            cik=match["cik"],
+            name=match["title"],
+            security=row["security"],
+            sector=row["sector"],
+            sub_industry=row["subIndustry"],
+            headquarters=row["headquarters"],
+            date_added=row["dateAdded"],
+            universe_source="sp500",
+        )
+        company_map[row["ticker"]] = merge_company_rows(company_map.get(row["ticker"], seed), seed) if row["ticker"] in company_map else seed
+
+    for row in get_expanded_universe_candidates(settings, force=force):
+        company_map[row["ticker"]] = merge_company_rows(company_map[row["ticker"]], row) if row["ticker"] in company_map else row
+
+    for row in get_additional_companies(settings):
         match = ticker_map.get(row["ticker"])
         if not match and "-" in row["ticker"]:
             match = ticker_map.get(row["ticker"].replace("-", "."))
@@ -233,20 +596,22 @@ def resolve_companies(settings: dict[str, Any]) -> list[dict[str, Any]]:
         if not resolved_cik:
             continue
 
-        companies.append(
-            {
-                "ticker": row["ticker"],
-                "cik": resolved_cik,
-                "name": match["title"] if match else row["security"],
-                "security": row["security"],
-                "sector": row["sector"],
-                "subIndustry": row["subIndustry"],
-                "headquarters": row["headquarters"],
-                "dateAdded": row["dateAdded"],
-            }
+        seed = build_company_seed(
+            ticker=row["ticker"],
+            cik=resolved_cik,
+            name=match["title"] if match else (row["security"] or row["ticker"]),
+            security=row["security"],
+            sector=row["sector"],
+            sub_industry=row["subIndustry"],
+            headquarters=row["headquarters"],
+            date_added=row["dateAdded"],
+            listing_exchange=row.get("listingExchange"),
+            is_adr=bool(row.get("isAdr")),
+            universe_source=row.get("universeSource") or "manual",
         )
-        seen_tickers.add(row["ticker"])
+        company_map[row["ticker"]] = merge_company_rows(company_map[row["ticker"]], seed) if row["ticker"] in company_map else seed
 
+    companies = sorted(company_map.values(), key=lambda item: item["ticker"])
     write_json(db_root / "companies.json", companies)
     write_json(db_root / "sp500_constituents.json", companies)
     return companies
@@ -348,6 +713,54 @@ def market_symbol(ticker: str) -> str:
     return f"{ticker.lower()}.us"
 
 
+def fetch_yahoo_market_quote(ticker: str, settings: dict[str, Any]) -> dict[str, Any] | None:
+    source_url = f"{settings['yahooChartBaseUrl']}/{ticker}?interval=1d&range=5d"
+    request = urllib.request.Request(
+        source_url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "application/json,text/plain,*/*",
+            "Accept-Language": "en-US,en;q=0.9",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        payload = json.loads(response.read().decode("utf-8", errors="replace"))
+
+    result = (((payload or {}).get("chart") or {}).get("result") or [None])[0]
+    if not result:
+        return None
+    timestamps = result.get("timestamp") or []
+    indicators = (((result.get("indicators") or {}).get("quote")) or [None])[0] or {}
+    opens = indicators.get("open") or []
+    highs = indicators.get("high") or []
+    lows = indicators.get("low") or []
+    closes = indicators.get("close") or []
+    volumes = indicators.get("volume") or []
+
+    last_index = None
+    for index in range(len(timestamps) - 1, -1, -1):
+        if index < len(closes) and closes[index] is not None:
+            last_index = index
+            break
+    if last_index is None:
+        return None
+
+    observed = datetime.fromtimestamp(int(timestamps[last_index]), tz=timezone.utc)
+    return {
+        "ticker": ticker,
+        "quoteDate": observed.strftime("%Y-%m-%d"),
+        "quoteTime": observed.strftime("%H:%M:%S"),
+        "open": round_or_none(opens[last_index] if last_index < len(opens) else None, 2),
+        "high": round_or_none(highs[last_index] if last_index < len(highs) else None, 2),
+        "low": round_or_none(lows[last_index] if last_index < len(lows) else None, 2),
+        "close": round_or_none(closes[last_index], 2),
+        "volume": round_or_none(volumes[last_index] if last_index < len(volumes) else None, 0),
+        "source": "yahoo",
+        "sourceUrl": source_url,
+        "fetchedAtUtc": utc_now_iso(),
+    }
+
+
 def fetch_market_quote(ticker: str, settings: dict[str, Any]) -> dict[str, Any] | None:
     source_url = f"{settings['marketDataBaseUrl']}?s={market_symbol(ticker)}&i=d"
     request = urllib.request.Request(
@@ -361,12 +774,14 @@ def fetch_market_quote(ticker: str, settings: dict[str, Any]) -> dict[str, Any] 
     with urllib.request.urlopen(request, timeout=30) as response:
         raw = response.read().decode("utf-8", errors="replace").strip()
 
+    if raw.startswith("Exceeded the daily hits limit"):
+        return fetch_yahoo_market_quote(ticker, settings)
     if not raw or raw.endswith("N/D,N/D,N/D,N/D,N/D,N/D,N/D,N/D"):
         return None
 
     parts = [item.strip() for item in raw.split(",")]
     if len(parts) < 8:
-        raise RuntimeError(f"Unexpected market quote payload for {ticker}: {raw}")
+        return fetch_yahoo_market_quote(ticker, settings)
 
     def parse_float(value: str) -> float | None:
         return None if value in {"", "N/D"} else float(value)
@@ -541,18 +956,17 @@ def is_quarterly_duration(entry: dict[str, Any]) -> bool:
 
 
 def select_annual_fact(entries: Iterable[dict[str, Any]], fiscal_year: int, period_type: str) -> dict[str, Any] | None:
-    annual_forms = {"10-K", "10-K/A", "10-KT"}
     entries = list(entries)
     candidates = []
     for entry in entries:
-        if entry.get("fy") != fiscal_year or entry.get("form") not in annual_forms or entry.get("frame"):
+        if entry.get("fy") != fiscal_year or entry.get("form") not in ANNUAL_FORMS or entry.get("frame"):
             continue
         if period_type == "duration" and not is_annual_duration(entry):
             continue
         candidates.append(entry)
     if not candidates:
         for entry in entries:
-            if entry.get("fy") != fiscal_year or entry.get("form") not in annual_forms:
+            if entry.get("fy") != fiscal_year or entry.get("form") not in ANNUAL_FORMS:
                 continue
             if period_type == "duration" and not is_annual_duration(entry):
                 continue
@@ -570,18 +984,17 @@ def select_annual_fact_sum(facts: dict[str, Any], concepts: list[tuple[str, str,
 
 
 def select_quarterly_fact(entries: Iterable[dict[str, Any]], fiscal_year: int, period_type: str) -> dict[str, Any] | None:
-    quarterly_forms = {"10-Q", "10-Q/A"}
     entries = list(entries)
     candidates = []
     for entry in entries:
-        if entry.get("fy") != fiscal_year or entry.get("form") not in quarterly_forms or entry.get("frame"):
+        if entry.get("fy") != fiscal_year or entry.get("form") not in QUARTERLY_FORMS or entry.get("frame"):
             continue
         if period_type == "duration" and not is_quarterly_duration(entry):
             continue
         candidates.append(entry)
     if not candidates:
         for entry in entries:
-            if entry.get("fy") != fiscal_year or entry.get("form") not in quarterly_forms:
+            if entry.get("fy") != fiscal_year or entry.get("form") not in QUARTERLY_FORMS:
                 continue
             if period_type == "duration" and not is_quarterly_duration(entry):
                 continue
@@ -602,7 +1015,7 @@ def select_quarterly_fact_sum(
         entries = list(entries)
         candidates = []
         for entry in entries:
-            if entry.get("fy") != fiscal_year or entry.get("fp") != fiscal_period or entry.get("form") not in {"10-Q", "10-Q/A"}:
+            if entry.get("fy") != fiscal_year or entry.get("fp") != fiscal_period or entry.get("form") not in QUARTERLY_FORMS:
                 continue
             if entry.get("frame"):
                 continue
@@ -771,7 +1184,10 @@ CREATE TABLE IF NOT EXISTS companies (
     sector TEXT,
     sub_industry TEXT,
     headquarters TEXT,
-    date_added TEXT
+    date_added TEXT,
+    listing_exchange TEXT,
+    is_adr INTEGER NOT NULL DEFAULT 0,
+    universe_source TEXT
 );
 CREATE TABLE IF NOT EXISTS filings (
     accession_number TEXT PRIMARY KEY,
@@ -907,13 +1323,22 @@ def ensure_schema_migrations(conn: sqlite3.Connection) -> None:
     ensure_column(conn, "annual_financials", "special_items", "REAL")
     ensure_column(conn, "quarterly_financials", "share_based_compensation_expense", "REAL")
     ensure_column(conn, "quarterly_financials", "special_items", "REAL")
+    ensure_column(conn, "companies", "listing_exchange", "TEXT")
+    ensure_column(conn, "companies", "is_adr", "INTEGER NOT NULL DEFAULT 0")
+    ensure_column(conn, "companies", "universe_source", "TEXT")
 
 
 def upsert_companies(conn: sqlite3.Connection, companies: list[dict[str, Any]]) -> None:
     conn.executemany(
         """
-        INSERT INTO companies (ticker, cik, name, security, sector, sub_industry, headquarters, date_added)
-        VALUES (:ticker, :cik, :name, :security, :sector, :subIndustry, :headquarters, :dateAdded)
+        INSERT INTO companies (
+            ticker, cik, name, security, sector, sub_industry, headquarters, date_added,
+            listing_exchange, is_adr, universe_source
+        )
+        VALUES (
+            :ticker, :cik, :name, :security, :sector, :subIndustry, :headquarters, :dateAdded,
+            :listingExchange, :isAdr, :universeSource
+        )
         ON CONFLICT(ticker) DO UPDATE SET
             cik = excluded.cik,
             name = excluded.name,
@@ -921,7 +1346,10 @@ def upsert_companies(conn: sqlite3.Connection, companies: list[dict[str, Any]]) 
             sector = excluded.sector,
             sub_industry = excluded.sub_industry,
             headquarters = excluded.headquarters,
-            date_added = excluded.date_added
+            date_added = excluded.date_added,
+            listing_exchange = excluded.listing_exchange,
+            is_adr = excluded.is_adr,
+            universe_source = excluded.universe_source
         """,
         companies,
     )
@@ -1025,7 +1453,7 @@ def get_existing_accessions(conn: sqlite3.Connection) -> set[str]:
 def get_companies_from_db(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
-        SELECT ticker, cik, name, security, sector, sub_industry, headquarters, date_added
+        SELECT ticker, cik, name, security, sector, sub_industry, headquarters, date_added, listing_exchange, is_adr, universe_source
         FROM companies
         ORDER BY ticker
         """
@@ -1040,6 +1468,9 @@ def get_companies_from_db(conn: sqlite3.Connection) -> list[dict[str, Any]]:
             "subIndustry": row["sub_industry"],
             "headquarters": row["headquarters"],
             "dateAdded": row["date_added"],
+            "listingExchange": row["listing_exchange"],
+            "isAdr": bool(row["is_adr"]),
+            "universeSource": row["universe_source"],
         }
         for row in rows
     ]
@@ -1165,6 +1596,34 @@ def run_query_sql(settings: dict[str, Any], sql: str) -> None:
             print_json({"rowsAffected": cursor.rowcount})
             return
         print_json(rows_to_dicts(cursor))
+
+
+def run_sync_progress(settings: dict[str, Any]) -> None:
+    db = Database(Path(settings["sqlitePath"]))
+    with db.connect() as conn:
+        total = conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
+        last_ticker = normalize_ticker(get_state(conn, "last_processed_ticker"))
+        completed = 0
+        if last_ticker:
+            row = conn.execute(
+                """
+                WITH ordered AS (
+                    SELECT ticker, ROW_NUMBER() OVER (ORDER BY ticker) AS rn
+                    FROM companies
+                )
+                SELECT rn FROM ordered WHERE ticker = ?
+                """,
+                (last_ticker,),
+            ).fetchone()
+            completed = row[0] if row else 0
+        print_json(
+            {
+                "totalCompanies": total,
+                "lastProcessedTicker": last_ticker,
+                "completedCompanies": completed,
+                "remainingCompanies": max(total - completed, 0),
+            }
+        )
 
 
 def run_export_csv(settings: dict[str, Any], table: str, output: str, where: str | None, order_by: str | None, limit: int | None) -> None:
@@ -1378,7 +1837,7 @@ def build_web_data(settings: dict[str, Any]) -> None:
         companies = rows_to_dicts(
             conn.execute(
                 """
-                SELECT ticker, cik, name, security, sector, sub_industry, headquarters, date_added
+                SELECT ticker, cik, name, security, sector, sub_industry, headquarters, date_added, listing_exchange, is_adr, universe_source
                 FROM companies
                 ORDER BY ticker
                 """
@@ -1438,6 +1897,9 @@ def build_web_data(settings: dict[str, Any]) -> None:
             "subIndustry": primary_company["sub_industry"],
             "headquarters": primary_company["headquarters"],
             "dateAdded": primary_company["date_added"],
+            "listingExchange": primary_company["listing_exchange"],
+            "isAdr": bool(primary_company["is_adr"]),
+            "universeSource": primary_company["universe_source"],
             "latestAnnual": latest_annual,
             "latestQuarter": latest_quarter,
             "latestFiling": latest_filing,
@@ -1552,11 +2014,29 @@ def refresh_companies(settings: dict[str, Any]) -> None:
     companies = resolve_companies(settings)
     with db.connect() as conn:
         upsert_companies(conn, companies)
-        sync_market_data(conn, settings, companies, force=True)
+        set_state(conn, "last_universe_refresh_utc", utc_now_iso())
+        set_state(conn, "last_processed_ticker", "")
+        set_state(conn, "last_processed_cik", "")
+        set_state(conn, "last_processed_step", "")
         export_json_snapshots(conn, settings)
         conn.commit()
-    build_web_data(settings)
-    print_json({"companiesRefreshed": len(companies)})
+    print_json({"companiesRefreshed": len(companies), "mode": "universe-only"})
+
+
+def stage_universe_checkpoint(settings: dict[str, Any], limit: int | None = None) -> None:
+    db = Database(Path(settings["sqlitePath"]))
+    companies = load_staged_universe_from_checkpoint(settings)
+    if limit:
+        companies = companies[:limit]
+    with db.connect() as conn:
+        upsert_companies(conn, companies)
+        set_state(conn, "last_universe_stage_utc", utc_now_iso())
+        set_state(conn, "last_processed_ticker", "")
+        set_state(conn, "last_processed_cik", "")
+        set_state(conn, "last_processed_step", "")
+        export_json_snapshots(conn, settings)
+        conn.commit()
+    print_json({"companiesStaged": len(companies), "mode": "checkpoint"})
 
 
 def recompute_financials(settings: dict[str, Any], ticker: str | None = None, limit: int | None = None) -> None:
@@ -1637,15 +2117,51 @@ def filter_companies(companies: list[dict[str, Any]], ticker: str | None, limit:
     return companies
 
 
-def run_full_sync(settings: dict[str, Any], ticker: str | None = None, limit: int | None = None, force: bool = False) -> None:
+def apply_resume_checkpoint(conn: sqlite3.Connection, companies: list[dict[str, Any]], resume: bool, ticker: str | None) -> tuple[list[dict[str, Any]], str | None]:
+    if not resume or ticker:
+        return companies, None
+
+    last_ticker = normalize_ticker(get_state(conn, "last_processed_ticker"))
+    if not last_ticker:
+        return companies, None
+
+    for index, company in enumerate(companies):
+        if company["ticker"] == last_ticker:
+            return companies[index + 1 :], last_ticker
+    return companies, None
+
+
+def run_full_sync(
+    settings: dict[str, Any],
+    ticker: str | None = None,
+    limit: int | None = None,
+    force: bool = False,
+    resume: bool = False,
+    refresh_universe: bool = False,
+) -> None:
     db = Database(Path(settings["sqlitePath"]))
     with db.connect() as conn:
-        companies = filter_companies(resolve_companies(settings), ticker, limit)
-        upsert_companies(conn, companies)
+        companies = get_companies_from_db(conn)
+        if refresh_universe or not companies:
+            companies = resolve_companies(settings, force=force)
+            upsert_companies(conn, companies)
+            set_state(conn, "last_universe_refresh_utc", utc_now_iso())
+            if refresh_universe:
+                set_state(conn, "last_processed_ticker", "")
+                set_state(conn, "last_processed_cik", "")
+                set_state(conn, "last_processed_step", "")
+            conn.commit()
+        companies = filter_companies(companies, ticker, None)
+        companies, resumed_from = apply_resume_checkpoint(conn, companies, resume, ticker)
+        companies = filter_companies(companies, None, limit)
         all_filings: list[dict[str, Any]] = []
         all_updated_companies: list[dict[str, Any]] = []
         failed_companies: list[dict[str, Any]] = []
         total = len(companies)
+        if resumed_from:
+            append_log(settings, f"Full sync resumed after {resumed_from}; remaining {total} companies")
+        elif resume:
+            append_log(settings, "Full sync resume requested but no checkpoint was found; starting from the beginning")
         append_log(settings, f"Full sync started for {total} companies")
         for index, company in enumerate(companies, start=1):
             try:
@@ -1676,18 +2192,32 @@ def run_full_sync(settings: dict[str, Any], ticker: str | None = None, limit: in
             append_log(settings, "Full sync completed without company-level failures")
         sync_market_data(conn, settings, companies, force=True)
         build_web_data(settings)
-        publish_announcement(settings, conn, "Full Sync Completed", all_updated_companies, all_filings)
+        publish_announcement(
+            settings,
+            conn,
+            "Full Sync Batch Completed" if (limit or resume or ticker) else "Full Sync Completed",
+            all_updated_companies,
+            all_filings,
+        )
         conn.commit()
 
 
-def run_daily_update(settings: dict[str, Any], ticker: str | None = None, limit: int | None = None, force: bool = False) -> None:
+def run_daily_update(
+    settings: dict[str, Any],
+    ticker: str | None = None,
+    limit: int | None = None,
+    force: bool = False,
+    resume: bool = False,
+) -> None:
     db = Database(Path(settings["sqlitePath"]))
     with db.connect() as conn:
         companies = get_companies_from_db(conn)
         if not companies:
             companies = resolve_companies(settings)
             upsert_companies(conn, companies)
-        companies = filter_companies(companies, ticker, limit)
+        companies = filter_companies(companies, ticker, None)
+        companies, resumed_from = apply_resume_checkpoint(conn, companies, resume, ticker)
+        companies = filter_companies(companies, None, limit)
 
         existing_accessions = get_existing_accessions(conn)
         updated_companies: list[dict[str, Any]] = []
@@ -1695,6 +2225,10 @@ def run_daily_update(settings: dict[str, Any], ticker: str | None = None, limit:
         failed_companies: list[dict[str, Any]] = []
 
         total = len(companies)
+        if resumed_from:
+            append_log(settings, f"Daily update resumed after {resumed_from}; remaining {total} companies")
+        elif resume:
+            append_log(settings, "Daily update resume requested but no checkpoint was found; starting from the beginning")
         append_log(settings, f"Daily update started for {total} companies")
         for index, company in enumerate(companies, start=1):
             try:
@@ -1739,7 +2273,7 @@ def run_daily_update(settings: dict[str, Any], ticker: str | None = None, limit:
         publish_announcement(
             settings,
             conn,
-            "Daily SEC Update" if new_filings else "Daily SEC Update - No Changes",
+            ("Daily SEC Update Batch" if (limit or resume or ticker) else "Daily SEC Update") if new_filings else ("Daily SEC Update Batch - No Changes" if (limit or resume or ticker) else "Daily SEC Update - No Changes"),
             updated_companies,
             new_filings,
         )
@@ -1776,16 +2310,20 @@ def main(argv: list[str] | None = None) -> int:
     full_sync.add_argument("--ticker")
     full_sync.add_argument("--limit", type=int)
     full_sync.add_argument("--force", action="store_true")
+    full_sync.add_argument("--resume", action="store_true")
+    full_sync.add_argument("--refresh-universe", action="store_true")
 
     daily_update = subparsers.add_parser("daily-update")
     daily_update.add_argument("--ticker")
     daily_update.add_argument("--limit", type=int)
     daily_update.add_argument("--force", action="store_true")
+    daily_update.add_argument("--resume", action="store_true")
 
     subparsers.add_parser("status")
 
     query_sql = subparsers.add_parser("query-sql")
     query_sql.add_argument("sql")
+    subparsers.add_parser("sync-progress")
 
     export_csv = subparsers.add_parser("export-csv")
     export_csv.add_argument("--table", required=True)
@@ -1796,6 +2334,8 @@ def main(argv: list[str] | None = None) -> int:
 
     subparsers.add_parser("build-web-data")
     subparsers.add_parser("refresh-companies")
+    stage_checkpoint = subparsers.add_parser("stage-universe-checkpoint")
+    stage_checkpoint.add_argument("--limit", type=int)
     market_sync = subparsers.add_parser("sync-market-data")
     market_sync.add_argument("--ticker")
     market_sync.add_argument("--limit", type=int)
@@ -1813,16 +2353,26 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     if args.command == "full-sync":
-        run_full_sync(settings, ticker=args.ticker, limit=args.limit, force=args.force)
+        run_full_sync(
+            settings,
+            ticker=args.ticker,
+            limit=args.limit,
+            force=args.force,
+            resume=args.resume,
+            refresh_universe=args.refresh_universe,
+        )
         return 0
     if args.command == "daily-update":
-        run_daily_update(settings, ticker=args.ticker, limit=args.limit, force=args.force)
+        run_daily_update(settings, ticker=args.ticker, limit=args.limit, force=args.force, resume=args.resume)
         return 0
     if args.command == "status":
         run_status(settings)
         return 0
     if args.command == "query-sql":
         run_query_sql(settings, args.sql)
+        return 0
+    if args.command == "sync-progress":
+        run_sync_progress(settings)
         return 0
     if args.command == "export-csv":
         run_export_csv(settings, args.table, args.output, args.where, args.order_by, args.limit)
@@ -1832,6 +2382,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "refresh-companies":
         refresh_companies(settings)
+        return 0
+    if args.command == "stage-universe-checkpoint":
+        stage_universe_checkpoint(settings, limit=args.limit)
         return 0
     if args.command == "sync-market-data":
         run_market_data_sync(settings, ticker=args.ticker, limit=args.limit, force=args.force)

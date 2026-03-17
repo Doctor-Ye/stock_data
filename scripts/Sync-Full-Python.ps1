@@ -2,7 +2,9 @@ param(
     [string]$PythonExe = (Join-Path $PSScriptRoot "..\tools\python312\runtime\python.exe"),
     [string]$Ticker,
     [int]$Limit,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$Resume,
+    [switch]$RefreshUniverse
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,6 +21,14 @@ if ($Limit) {
 
 if ($Force) {
     $arguments += "--force"
+}
+
+if ($Resume) {
+    $arguments += "--resume"
+}
+
+if ($RefreshUniverse) {
+    $arguments += "--refresh-universe"
 }
 
 & $PythonExe @arguments

@@ -17,6 +17,7 @@
     listPs: '市销率',
     listOpProfit: '营业利润',
     listCoreGrowth: '扣非增速',
+    listNormalizedPe: '扣非市盈率',
     aliases: '别名代码',
     previousClose: '上一交易日收盘价',
     marketCap: '市值',

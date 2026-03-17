@@ -140,6 +140,7 @@
             <span class="pill">${config.text.listPs} ${fmtRatio(item.psRatio)}</span>
             <span class="pill">${config.text.listOpProfit} ${fmtCurrencyCompact(item.operatingProfit)}</span>
             <span class="pill">${config.text.listCoreGrowth} ${fmtPercent(item.normalizedNetIncomeGrowthPct)}</span>
+            <span class="pill">${config.text.listNormalizedPe || config.text.normalizedPe} ${fmtRatio(item.normalizedPeProxy)}</span>
           </div>
         </article>
       `).join('');

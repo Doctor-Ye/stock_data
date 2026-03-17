@@ -8,10 +8,17 @@
   "secTickerMapUrl": "https://www.sec.gov/files/company_tickers.json",
   "secSubmissionsBaseUrl": "https://data.sec.gov/submissions",
   "secCompanyFactsBaseUrl": "https://data.sec.gov/api/xbrl/companyfacts",
+  "nasdaqListedUrl": "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt",
+  "otherListedUrl": "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt",
+  "universeMinMarketCapUsd": 10000000000,
   "formsToTrack": [
     "10-K",
     "10-K/A",
     "10-KT",
+    "20-F",
+    "20-F/A",
+    "40-F",
+    "40-F/A",
     "10-Q",
     "10-Q/A"
   ]
