@@ -23,6 +23,7 @@ from typing import Any, Iterable
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SETTINGS_PATH = PROJECT_ROOT / "config" / "settings.json"
 FALLBACK_SETTINGS_PATH = PROJECT_ROOT / "config" / "settings.example.json"
+UNIVERSE_CHECKPOINT_VERSION = 2
 ANNUAL_FORMS = {"10-K", "10-K/A", "10-KT", "20-F", "20-F/A", "40-F", "40-F/A"}
 QUARTERLY_FORMS = {"10-Q", "10-Q/A"}
 ADR_NAME_RE = re.compile(r"\badrs?\b|\bads\b|american depositary|depositary receipt", re.I)
@@ -451,6 +452,8 @@ def load_universe_checkpoint(settings: dict[str, Any], force: bool = False) -> d
     if force:
         return {"completed": False, "lastTicker": None, "total": 0, "accepted": []}
     payload = read_json(universe_checkpoint_path(settings)) or {}
+    if int(payload.get("version") or 0) != UNIVERSE_CHECKPOINT_VERSION:
+        return {"completed": False, "lastTicker": None, "total": 0, "accepted": []}
     return {
         "completed": bool(payload.get("completed")),
         "lastTicker": normalize_ticker(payload.get("lastTicker")),
@@ -463,6 +466,7 @@ def save_universe_checkpoint(settings: dict[str, Any], total: int, accepted: lis
     write_json(
         universe_checkpoint_path(settings),
         {
+            "version": UNIVERSE_CHECKPOINT_VERSION,
             "updatedAtUtc": utc_now_iso(),
             "total": total,
             "lastTicker": last_ticker,
@@ -533,13 +537,8 @@ def get_expanded_universe_candidates(settings: dict[str, Any], force: bool = Fal
             security=listing["security"],
             listing_exchange=listing.get("listingExchange"),
             is_adr=bool(listing.get("isAdr")),
-            universe_source="adr" if listing.get("isAdr") else "market-cap",
+            universe_source="market-cap",
         )
-
-        if company["isAdr"]:
-            rows.append(company)
-            save_universe_checkpoint(settings, total, rows, ticker, False)
-            continue
 
         if (index + 1) % 250 == 0:
             append_log(settings, f"Universe screen [{index + 1}/{total}] {ticker}")
