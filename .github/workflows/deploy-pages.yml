@@ -24,6 +24,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # The repository Pages site must exist in Settings before the first deploy.
       - name: Checkout
         uses: actions/checkout@v4
 
