@@ -26,6 +26,7 @@ FALLBACK_SETTINGS_PATH = PROJECT_ROOT / "config" / "settings.example.json"
 UNIVERSE_CHECKPOINT_VERSION = 2
 ANNUAL_FORMS = {"10-K", "10-K/A", "10-KT", "20-F", "20-F/A", "40-F", "40-F/A"}
 QUARTERLY_FORMS = {"10-Q", "10-Q/A"}
+GUIDANCE_FORMS = ANNUAL_FORMS | QUARTERLY_FORMS | {"8-K", "8-K/A", "6-K", "6-K/A"}
 ADR_NAME_RE = re.compile(r"\badrs?\b|\bads\b|american depositary|depositary receipt", re.I)
 NEGATIVE_EQUITY_NAME_RE = re.compile(
     r"\betf\b|\betn\b|\bexchange traded\b|\bmutual fund\b|\bfund\b|\btrust\b|"
@@ -47,6 +48,17 @@ EXCHANGE_CODE_MAP = {
     "Z": "Cboe",
     "V": "IEX",
 }
+GUIDANCE_KEYWORDS = (
+    "guidance",
+    "outlook",
+    "expect",
+    "expects",
+    "forecast",
+    "projects",
+    "projected",
+    "anticipate",
+    "anticipates",
+)
 
 
 def utc_now_iso() -> str:
@@ -64,6 +76,8 @@ def load_settings() -> dict[str, Any]:
     settings["projectRoot"] = str(PROJECT_ROOT)
     settings["dataRootResolved"] = str(data_root)
     settings.setdefault("additionalCompaniesPath", str((PROJECT_ROOT / "config" / "additional_companies.json").resolve()))
+    settings.setdefault("profitForecastsPath", str((PROJECT_ROOT / "config" / "earnings_forecasts.json").resolve()))
+    settings.setdefault("nasdaq100Source", "https://en.wikipedia.org/wiki/Nasdaq-100")
     settings.setdefault("sqlitePath", str((data_root / "db" / "stock_sec.db").resolve()))
     settings.setdefault("formsToTrack", sorted(ANNUAL_FORMS | QUARTERLY_FORMS))
     settings.setdefault("lookbackYears", 10)
@@ -219,12 +233,51 @@ def parse_sp500_constituents(html: str) -> list[dict[str, Any]]:
     return items
 
 
+def parse_nasdaq100_constituents(html: str) -> list[dict[str, Any]]:
+    tables = re.findall(r'<table[^>]*class="[^"]*wikitable[^"]*"[^>]*>(.*?)</table>', html, re.S)
+    for table_html in tables:
+        rows = re.findall(r"<tr[^>]*>(.*?)</tr>", table_html, re.S)
+        if not rows:
+            continue
+        header_cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", rows[0], re.S)
+        headers = [html_unescape(re.sub(r"<.*?>", "", cell).strip()).lower() for cell in header_cells]
+        if not headers:
+            continue
+        ticker_idx = next((i for i, header in enumerate(headers) if "ticker" in header or "symbol" in header), None)
+        company_idx = next((i for i, header in enumerate(headers) if "company" in header), None)
+        if ticker_idx is None or company_idx is None:
+            continue
+
+        items: list[dict[str, Any]] = []
+        for row in rows[1:]:
+            cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)
+            if len(cells) <= max(ticker_idx, company_idx):
+                continue
+            cleaned = [html_unescape(re.sub(r"<.*?>", "", cell).strip()) for cell in cells]
+            symbol = normalize_ticker(cleaned[ticker_idx])
+            if not symbol or symbol in {"SYMBOL", "TICKER"}:
+                continue
+            items.append(
+                {
+                    "ticker": symbol,
+                    "security": cleaned[company_idx],
+                }
+            )
+        if len(items) >= 80:
+            return items
+    raise RuntimeError("Unable to locate Nasdaq-100 constituent table.")
+
+
 def html_unescape(value: str) -> str:
     return html.unescape(value)
 
 
 def get_sp500_constituents(settings: dict[str, Any]) -> list[dict[str, Any]]:
     return parse_sp500_constituents(fetch_text(settings["sp500Source"], settings))
+
+
+def get_nasdaq100_constituents(settings: dict[str, Any]) -> list[dict[str, Any]]:
+    return parse_nasdaq100_constituents(fetch_text(settings["nasdaq100Source"], settings))
 
 
 def get_sec_ticker_map(settings: dict[str, Any]) -> list[dict[str, Any]]:
@@ -583,6 +636,21 @@ def resolve_companies(settings: dict[str, Any], force: bool = False) -> list[dic
         )
         company_map[row["ticker"]] = merge_company_rows(company_map.get(row["ticker"], seed), seed) if row["ticker"] in company_map else seed
 
+    for row in get_nasdaq100_constituents(settings):
+        match = ticker_map.get(row["ticker"])
+        if not match and "-" in row["ticker"]:
+            match = ticker_map.get(row["ticker"].replace("-", "."))
+        if not match:
+            continue
+        seed = build_company_seed(
+            ticker=row["ticker"],
+            cik=match["cik"],
+            name=match["title"],
+            security=row["security"],
+            universe_source="nasdaq100",
+        )
+        company_map[row["ticker"]] = merge_company_rows(company_map.get(row["ticker"], seed), seed) if row["ticker"] in company_map else seed
+
     for row in get_expanded_universe_candidates(settings, force=force):
         company_map[row["ticker"]] = merge_company_rows(company_map[row["ticker"]], row) if row["ticker"] in company_map else row
 
@@ -612,7 +680,8 @@ def resolve_companies(settings: dict[str, Any], force: bool = False) -> list[dic
 
     companies = sorted(company_map.values(), key=lambda item: item["ticker"])
     write_json(db_root / "companies.json", companies)
-    write_json(db_root / "sp500_constituents.json", companies)
+    write_json(db_root / "sp500_constituents.json", [row for row in companies if "sp500" in str(row.get("universeSource") or "").split(",")])
+    write_json(db_root / "nasdaq100_constituents.json", [row for row in companies if "nasdaq100" in str(row.get("universeSource") or "").split(",")])
     return companies
 
 
@@ -627,6 +696,162 @@ def get_or_fetch_json(url: str, path: Path, settings: dict[str, Any], force: boo
     write_json(path, payload)
     time.sleep(0.2)
     return payload
+
+
+def get_or_fetch_filing_text(url: str, path: Path, settings: dict[str, Any], force: bool = False) -> str:
+    if path.exists() and not force:
+        return path.read_text(encoding="utf-8", errors="replace")
+    payload = fetch_text(url, settings)
+    ensure_dir(path.parent)
+    path.write_text(payload, encoding="utf-8")
+    time.sleep(0.2)
+    return payload
+
+
+def filing_document_root(settings: dict[str, Any], cik: str) -> Path:
+    return company_root(settings, cik) / "filings"
+
+
+def sec_archive_document_url(cik: str, accession_number: str, primary_document: str) -> str:
+    cik_int = str(int(cik))
+    accession_compact = accession_number.replace("-", "")
+    return f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{accession_compact}/{primary_document}"
+
+
+def filing_document_cache_path(settings: dict[str, Any], cik: str, accession_number: str, primary_document: str | None) -> Path:
+    safe_name = primary_document or "primary_document.html"
+    return filing_document_root(settings, cik) / accession_number / safe_name
+
+
+def extract_guidance_exhibit_links(raw_html: str) -> list[str]:
+    rows = re.findall(r"(?is)<tr[^>]*>(.*?)</tr>", raw_html)
+    links: list[str] = []
+    for row in rows:
+        row_text = html_to_text(row).lower()
+        if "99.1" not in row_text and "99.2" not in row_text and "earnings release" not in row_text and "outlook" not in row_text:
+            continue
+        for href in re.findall(r'(?i)href="([^"]+)"', row):
+            if href.startswith("#") or href.lower().startswith("javascript:"):
+                continue
+            links.append(href)
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for link in links:
+        if link in seen:
+            continue
+        seen.add(link)
+        deduped.append(link)
+    return deduped[:4]
+
+
+def html_to_text(payload: str) -> str:
+    text = re.sub(r"(?is)<script.*?>.*?</script>", " ", payload)
+    text = re.sub(r"(?is)<style.*?>.*?</style>", " ", text)
+    text = re.sub(r"(?i)<br\s*/?>", "\n", text)
+    text = re.sub(r"(?i)</p\s*>", "\n", text)
+    text = re.sub(r"(?i)</div\s*>", "\n", text)
+    text = re.sub(r"(?i)</tr\s*>", "\n", text)
+    text = re.sub(r"(?is)<.*?>", " ", text)
+    text = html_unescape(text)
+    text = text.replace("\xa0", " ")
+    text = re.sub(r"\r", "\n", text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{2,}", "\n", text)
+    return text.strip()
+
+
+def normalize_sentence_text(text: str) -> str:
+    cleaned = text.replace("\u2019", "'").replace("\u201c", '"').replace("\u201d", '"')
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.strip()
+
+
+def normalize_fiscal_year_token(raw_year: str) -> int | None:
+    try:
+        year = int(raw_year)
+    except ValueError:
+        return None
+    if year < 100:
+        year += 2000
+    return year if year >= 2000 else None
+
+
+def sentence_contains_guidance(text: str) -> bool:
+    lower = text.lower()
+    return any(keyword in lower for keyword in GUIDANCE_KEYWORDS)
+
+
+def split_sentences(text: str) -> list[str]:
+    normalized = normalize_sentence_text(text)
+    if not normalized:
+        return []
+    parts = re.split(r"(?<=[\.\?\!;])\s+", normalized)
+    return [part.strip() for part in parts if part.strip()]
+
+
+def iter_guidance_table_windows(text: str) -> list[tuple[int, str]]:
+    windows: list[tuple[int, str]] = []
+    seen: set[tuple[int, int]] = set()
+    for match in re.finditer(r"\bQ([1-4])\s+FY\s*(\d{2,4})\s+Outlook\b", text, re.I):
+        fiscal_year = normalize_fiscal_year_token(match.group(2))
+        if fiscal_year is None:
+            continue
+        key = (fiscal_year, match.start())
+        if key in seen:
+            continue
+        seen.add(key)
+        windows.append((fiscal_year, text[match.start() : min(match.start() + 4000, len(text))]))
+    for match in re.finditer(r"\bFQ([1-4])[- ](\d{2,4})\b", text, re.I):
+        fiscal_year = normalize_fiscal_year_token(match.group(2))
+        if fiscal_year is None:
+            continue
+        outlook_probe = text[match.start() : min(match.start() + 160, len(text))]
+        if "outlook" not in outlook_probe.lower():
+            continue
+        key = (fiscal_year, match.start())
+        if key in seen:
+            continue
+        seen.add(key)
+        windows.append((fiscal_year, text[match.start() : min(match.start() + 2500, len(text))]))
+    return windows
+
+
+def extract_revenue_outlook_value(text: str) -> float | None:
+    patterns = [
+        r"Revenue\s+\$?\s*([\d,]+(?:\.\d+)?)\s*(billion|million|thousand)(?:\s*(?:±|\+/-|plus or minus)\s*\$?\s*[\d,]+(?:\.\d+)?\s*(?:billion|million|thousand|%))?",
+        r"Revenue\s+\$?\s*([\d,]+(?:\.\d+)?)\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, re.I)
+        if not match:
+            continue
+        magnitude = match.group(2) if match.lastindex and match.lastindex >= 2 else None
+        amount = parse_money_amount(match.group(1), magnitude)
+        if amount is not None and amount > 0:
+            if magnitude is None and amount < 1_000_000:
+                amount *= 1_000_000
+            return round(amount, 2)
+    return None
+
+
+def extract_table_guidance_forecasts(raw_html: str) -> list[tuple[str, int, float, str]]:
+    text = normalize_sentence_text(html_to_text(raw_html))
+    matches: list[tuple[str, int, float, str]] = []
+    for fiscal_year, window in iter_guidance_table_windows(text):
+        revenue_value = extract_revenue_outlook_value(window)
+        if revenue_value is not None:
+            matches.append(("revenue", fiscal_year, revenue_value, "outlook-table"))
+
+        eps_match = re.search(
+            r"(?:diluted\s+)?(?:earnings\s+per\s+share|eps)(?:\s*\(\d+\))?.{0,24}?\$\s*([\d,]+(?:\.\d+)?)",
+            window,
+            re.I,
+        )
+        if eps_match:
+            eps_value = parse_eps_amount(eps_match.group(1))
+            if eps_value is not None and eps_value > 0:
+                matches.append(("eps", fiscal_year, eps_value, "outlook-table"))
+    return matches
 
 
 def merge_submission_arrays(submission: dict[str, Any]) -> list[dict[str, Any]]:
@@ -656,7 +881,12 @@ def merge_submission_arrays(submission: dict[str, Any]) -> list[dict[str, Any]]:
     return items
 
 
-def get_all_submissions(company: dict[str, Any], settings: dict[str, Any], force: bool = False) -> list[dict[str, Any]]:
+def get_all_submissions(
+    company: dict[str, Any],
+    settings: dict[str, Any],
+    force: bool = False,
+    tracked_forms: set[str] | None = None,
+) -> list[dict[str, Any]]:
     root = company_root(settings, company["cik"]) / "submissions"
     ensure_dir(root)
     primary_path = root / f"CIK{company['cik']}.json"
@@ -675,7 +905,7 @@ def get_all_submissions(company: dict[str, Any], settings: dict[str, Any], force
 
     seen: set[str] = set()
     filtered: list[dict[str, Any]] = []
-    tracked_forms = set(settings["formsToTrack"])
+    tracked_forms = tracked_forms or set(settings["formsToTrack"])
     for item in sorted(rows, key=lambda row: (row.get("filingDate") or "", row.get("accessionNumber") or "")):
         accession = item.get("accessionNumber")
         if not accession or accession in seen:
@@ -1274,11 +1504,24 @@ CREATE TABLE IF NOT EXISTS announcements (
     markdown_path TEXT NOT NULL,
     payload_json TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS profit_forecasts (
+    ticker TEXT NOT NULL,
+    fiscal_year INTEGER NOT NULL,
+    metric TEXT NOT NULL DEFAULT 'net_income',
+    forecast_value REAL,
+    source_type TEXT,
+    source_name TEXT,
+    source_url TEXT,
+    notes TEXT,
+    updated_at_utc TEXT,
+    PRIMARY KEY (ticker, fiscal_year, metric)
+);
 CREATE INDEX IF NOT EXISTS idx_filings_ticker_date ON filings (ticker, filing_date DESC);
 CREATE INDEX IF NOT EXISTS idx_filings_form_date ON filings (form, filing_date DESC);
 CREATE INDEX IF NOT EXISTS idx_annual_financials_ticker_year ON annual_financials (ticker, fiscal_year DESC);
 CREATE INDEX IF NOT EXISTS idx_quarterly_financials_ticker_period ON quarterly_financials (ticker, fiscal_year DESC, fiscal_period DESC);
 CREATE INDEX IF NOT EXISTS idx_market_quotes_date ON market_quotes (quote_date DESC);
+CREATE INDEX IF NOT EXISTS idx_profit_forecasts_ticker_year ON profit_forecasts (ticker, fiscal_year DESC);
 CREATE VIEW IF NOT EXISTS latest_annual_financials AS
 SELECT a.*
 FROM annual_financials a
@@ -1325,6 +1568,79 @@ def ensure_schema_migrations(conn: sqlite3.Connection) -> None:
     ensure_column(conn, "companies", "listing_exchange", "TEXT")
     ensure_column(conn, "companies", "is_adr", "INTEGER NOT NULL DEFAULT 0")
     ensure_column(conn, "companies", "universe_source", "TEXT")
+    ensure_column(conn, "profit_forecasts", "metric", "TEXT NOT NULL DEFAULT 'net_income'")
+    ensure_column(conn, "profit_forecasts", "forecast_value", "REAL")
+    ensure_column(conn, "profit_forecasts", "source_type", "TEXT")
+    ensure_column(conn, "profit_forecasts", "source_name", "TEXT")
+    ensure_column(conn, "profit_forecasts", "source_url", "TEXT")
+    ensure_column(conn, "profit_forecasts", "notes", "TEXT")
+    ensure_column(conn, "profit_forecasts", "updated_at_utc", "TEXT")
+
+
+def load_profit_forecasts(settings: dict[str, Any]) -> list[dict[str, Any]]:
+    rows = read_json(Path(settings["profitForecastsPath"])) or []
+    forecasts: list[dict[str, Any]] = []
+    for row in rows:
+        ticker = normalize_ticker(row.get("ticker"))
+        fiscal_year = row.get("fiscalYear", row.get("fiscal_year"))
+        forecast_value = row.get("forecastNetIncome", row.get("forecast_net_income"))
+        if not ticker or fiscal_year is None:
+            continue
+        forecasts.append(
+            {
+                "ticker": ticker,
+                "fiscal_year": int(fiscal_year),
+                "metric": row.get("metric") or "net_income",
+                "forecast_value": float(forecast_value) if forecast_value is not None else None,
+                "source_type": row.get("sourceType", row.get("source_type")),
+                "source_name": row.get("sourceName", row.get("source_name")),
+                "source_url": row.get("sourceUrl", row.get("source_url")),
+                "notes": row.get("notes"),
+                "updated_at_utc": row.get("updatedAtUtc", row.get("updated_at_utc")) or utc_now_iso(),
+            }
+        )
+    return forecasts
+
+
+def upsert_profit_forecasts(conn: sqlite3.Connection, forecasts: list[dict[str, Any]]) -> None:
+    conn.execute("DELETE FROM profit_forecasts")
+    if not forecasts:
+        return
+    conn.executemany(
+        """
+        INSERT INTO profit_forecasts (
+            ticker, fiscal_year, metric, forecast_value, source_type, source_name, source_url, notes, updated_at_utc
+        ) VALUES (
+            :ticker, :fiscal_year, :metric, :forecast_value, :source_type, :source_name, :source_url, :notes, :updated_at_utc
+        )
+        ON CONFLICT(ticker, fiscal_year, metric) DO UPDATE SET
+            forecast_value = excluded.forecast_value,
+            source_type = excluded.source_type,
+            source_name = excluded.source_name,
+            source_url = excluded.source_url,
+            notes = excluded.notes,
+            updated_at_utc = excluded.updated_at_utc
+        """,
+        forecasts,
+    )
+
+
+def refresh_profit_forecasts(conn: sqlite3.Connection, settings: dict[str, Any]) -> list[dict[str, Any]]:
+    manual_forecasts = load_profit_forecasts(settings)
+    existing_forecasts = rows_to_dicts(conn.execute("SELECT * FROM profit_forecasts"))
+    preserved_official_rows = [row for row in existing_forecasts if row.get("source_type") == "official-guidance"]
+    merged_rows = merge_profit_forecasts(manual_forecasts, preserved_official_rows)
+    upsert_profit_forecasts(conn, merged_rows)
+    return merged_rows
+
+
+def merge_profit_forecasts(manual_rows: list[dict[str, Any]], official_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    merged: dict[tuple[str, int, str], dict[str, Any]] = {}
+    for row in official_rows:
+        merged[(row["ticker"], row["fiscal_year"], row["metric"])] = row
+    for row in manual_rows:
+        merged[(row["ticker"], row["fiscal_year"], row["metric"])] = row
+    return sorted(merged.values(), key=lambda item: (item["ticker"], item["fiscal_year"], item["metric"]))
 
 
 def upsert_companies(conn: sqlite3.Connection, companies: list[dict[str, Any]]) -> None:
@@ -1564,12 +1880,14 @@ def print_json(data: Any) -> None:
 def run_status(settings: dict[str, Any]) -> None:
     db = Database(Path(settings["sqlitePath"]))
     with db.connect() as conn:
+        refresh_profit_forecasts(conn, settings)
         counts = {
             "companies": conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0],
             "filings": conn.execute("SELECT COUNT(*) FROM filings").fetchone()[0],
             "annualFinancials": conn.execute("SELECT COUNT(*) FROM annual_financials").fetchone()[0],
             "quarterlyFinancials": conn.execute("SELECT COUNT(*) FROM quarterly_financials").fetchone()[0],
             "marketQuotes": conn.execute("SELECT COUNT(*) FROM market_quotes").fetchone()[0],
+            "profitForecasts": conn.execute("SELECT COUNT(*) FROM profit_forecasts").fetchone()[0],
             "announcements": conn.execute("SELECT COUNT(*) FROM announcements").fetchone()[0],
         }
         sync_state = {row["key"]: row["value"] for row in conn.execute("SELECT key, value FROM sync_state")}
@@ -1699,6 +2017,222 @@ def normalized_net_income_proxy(row: dict[str, Any] | None) -> float | None:
     return round(fee_adjusted - special_items, 2)
 
 
+def parse_fiscal_year_hint(text: str) -> int | None:
+    match = re.search(r"\b(?:fiscal year|fy)\s*(20\d{2})\b", text, re.I)
+    if match:
+        return int(match.group(1))
+    match = re.search(r"\b(?:first|second|third|fourth)\s+quarter(?:\s+of)?\s+fiscal\s+(\d{2,4})\b", text, re.I)
+    if match:
+        return normalize_fiscal_year_token(match.group(1))
+    match = re.search(r"\b(?:fiscal\s+q[1-4]|fq[1-4]|q[1-4]\s+fy)\s*[- ]?(\d{2,4})\b", text, re.I)
+    if match:
+        return normalize_fiscal_year_token(match.group(1))
+    match = re.search(r"\bfor\s+(20\d{2})\b", text, re.I)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def parse_money_amount(raw_value: str, magnitude: str | None) -> float | None:
+    try:
+        value = float(raw_value.replace(",", ""))
+    except ValueError:
+        return None
+    scale = (magnitude or "").lower()
+    if scale.startswith("billion"):
+        value *= 1_000_000_000
+    elif scale.startswith("million"):
+        value *= 1_000_000
+    elif scale.startswith("thousand"):
+        value *= 1_000
+    return value
+
+
+def parse_eps_amount(raw_value: str) -> float | None:
+    try:
+        return float(raw_value.replace(",", ""))
+    except ValueError:
+        return None
+
+
+def extract_guidance_value_from_text(metric: str, text: str, shares_outstanding: float | None) -> tuple[float | None, str | None]:
+    if metric == "revenue":
+        revenue_patterns = [
+            r"(?:revenue|sales)\s+(?:is expected to be|expected to be|is projected to be|projected to be|will be|to be|of)\s+\$?\s*([\d,]+(?:\.\d+)?)\s*(billion|million|thousand)?",
+            r"(?:expect|expects|forecast|forecasts|project|projects|anticipate|anticipates).{0,80}?(?:revenue|sales).{0,40}?\$?\s*([\d,]+(?:\.\d+)?)\s*(billion|million|thousand)?",
+        ]
+        for pattern in revenue_patterns:
+            match = re.search(pattern, text, re.I)
+            if match:
+                amount = parse_money_amount(match.group(1), match.group(2))
+                if amount is not None and amount > 0:
+                    return round(amount, 2), "revenue"
+        return None, None
+
+    money_patterns = [
+        r"(?:net income|profit attributable to shareholders|profit attributable to owners|earnings)\s+(?:is expected to be|expected to be|is projected to be|projected to be|will be|to be|of)\s+\$?\s*([\d,]+(?:\.\d+)?)\s*(billion|million|thousand)?",
+        r"(?:expect|expects|forecast|forecasts|project|projects|anticipate|anticipates).{0,80}?(?:net income|earnings).{0,40}?\$?\s*([\d,]+(?:\.\d+)?)\s*(billion|million|thousand)?",
+    ]
+    for pattern in money_patterns:
+        match = re.search(pattern, text, re.I)
+        if match:
+            amount = parse_money_amount(match.group(1), match.group(2))
+            if amount is not None and amount > 0:
+                return round(amount, 2), "net-income"
+
+    if shares_outstanding not in (None, 0):
+        eps_patterns = [
+            r"(?:diluted\s+)?eps\s+(?:is expected to be|expected to be|is projected to be|projected to be|will be|to be|of)\s+\$?\s*([\d,]+(?:\.\d+)?)",
+            r"(?:expect|expects|forecast|forecasts|project|projects|anticipate|anticipates).{0,80}?(?:diluted\s+)?eps.{0,20}?\$?\s*([\d,]+(?:\.\d+)?)",
+        ]
+        for pattern in eps_patterns:
+            match = re.search(pattern, text, re.I)
+            if match:
+                eps = parse_eps_amount(match.group(1))
+                if eps is not None and eps > 0:
+                    return round(float(shares_outstanding) * eps, 2), "eps-derived"
+
+    return None, None
+
+
+def filing_candidates_for_guidance(submission_rows: list[dict[str, Any]], lookback_days: int = 400) -> list[dict[str, Any]]:
+    cutoff = datetime.now(timezone.utc).timestamp() - lookback_days * 86400
+    candidates: list[dict[str, Any]] = []
+    for row in submission_rows:
+        form = row.get("form")
+        filing_date = row.get("filingDate")
+        primary_document = row.get("primaryDocument")
+        accession = row.get("accessionNumber")
+        if form not in GUIDANCE_FORMS or not filing_date or not primary_document or not accession:
+            continue
+        try:
+            filed_ts = datetime.fromisoformat(f"{filing_date}T00:00:00+00:00").timestamp()
+        except ValueError:
+            continue
+        if filed_ts < cutoff:
+            continue
+        candidates.append(row)
+    candidates.sort(key=lambda item: (item.get("filingDate") or "", item.get("acceptanceDateTime") or ""), reverse=True)
+    return candidates[:8]
+
+
+def build_forecast_row(
+    company: dict[str, Any],
+    filing: dict[str, Any],
+    accession_number: str,
+    document_name: str,
+    document_url: str,
+    metric: str,
+    fiscal_year: int,
+    forecast_value: float,
+    extraction_kind: str,
+    excerpt: str,
+) -> dict[str, Any]:
+    return {
+        "ticker": company["ticker"],
+        "fiscal_year": fiscal_year,
+        "metric": metric,
+        "forecast_value": forecast_value,
+        "source_type": "official-guidance",
+        "source_name": f"{filing.get('form')} {filing.get('filingDate')}",
+        "source_url": document_url,
+        "notes": f"Extracted from SEC official filing; accession {accession_number}; document={document_name}; method={extraction_kind}; excerpt={excerpt[:400]}",
+        "updated_at_utc": utc_now_iso(),
+    }
+
+
+def extract_official_guidance_forecasts(
+    company: dict[str, Any],
+    settings: dict[str, Any],
+    shares_outstanding: float | None,
+    force: bool = False,
+) -> list[dict[str, Any]]:
+    extracted: dict[tuple[str, int], dict[str, Any]] = {}
+    submissions = get_all_submissions(company, settings, force=force, tracked_forms=GUIDANCE_FORMS)
+    for filing in filing_candidates_for_guidance(submissions):
+        accession_number = filing["accessionNumber"]
+        primary_document = filing.get("primaryDocument")
+        if not primary_document:
+            continue
+        source_url = sec_archive_document_url(company["cik"], accession_number, primary_document)
+        cache_path = filing_document_cache_path(settings, company["cik"], accession_number, primary_document)
+        try:
+            raw_text = get_or_fetch_filing_text(source_url, cache_path, settings, force=force)
+        except Exception as exc:
+            append_log(settings, f"Guidance document fetch failed for {company['ticker']} {accession_number}: {exc}")
+            continue
+
+        related_documents = [primary_document] + extract_guidance_exhibit_links(raw_text)
+        seen_docs: set[str] = set()
+        for document_name in related_documents:
+            if document_name in seen_docs:
+                continue
+            seen_docs.add(document_name)
+            document_url = sec_archive_document_url(company["cik"], accession_number, document_name)
+            document_cache_path = filing_document_cache_path(settings, company["cik"], accession_number, document_name)
+            try:
+                document_raw = raw_text if document_name == primary_document else get_or_fetch_filing_text(document_url, document_cache_path, settings, force=force)
+            except Exception as exc:
+                append_log(settings, f"Guidance exhibit fetch failed for {company['ticker']} {accession_number} {document_name}: {exc}")
+                continue
+            for metric, fiscal_year, raw_value, extraction_kind in extract_table_guidance_forecasts(document_raw):
+                forecast_value = raw_value
+                if metric == "eps":
+                    if shares_outstanding in (None, 0):
+                        continue
+                    forecast_value = round(float(shares_outstanding) * raw_value, 2)
+                    metric = "net_income"
+                key = (metric, fiscal_year)
+                if key in extracted:
+                    continue
+                extracted[key] = build_forecast_row(
+                    company=company,
+                    filing=filing,
+                    accession_number=accession_number,
+                    document_name=document_name,
+                    document_url=document_url,
+                    metric=metric,
+                    fiscal_year=fiscal_year,
+                    forecast_value=forecast_value,
+                    extraction_kind=extraction_kind,
+                    excerpt="Qx FY outlook table",
+                )
+            plain_text = html_to_text(document_raw)
+            sentences = split_sentences(plain_text)
+            if not sentences:
+                continue
+            for index, sentence in enumerate(sentences):
+                if not sentence_contains_guidance(sentence):
+                    continue
+                window = " ".join(sentences[index : min(index + 3, len(sentences))])
+                lower_window = window.lower()
+                if "net income" not in lower_window and "earnings" not in lower_window and "eps" not in lower_window and "revenue" not in lower_window and "sales" not in lower_window:
+                    continue
+                fiscal_year = parse_fiscal_year_hint(window) or parse_fiscal_year_hint(plain_text[:5000])
+                if fiscal_year is None:
+                    continue
+                for metric in ("net_income", "revenue"):
+                    forecast_value, extraction_kind = extract_guidance_value_from_text(metric, window, shares_outstanding)
+                    if forecast_value is None:
+                        continue
+                    key = (metric, fiscal_year)
+                    if key in extracted:
+                        continue
+                    extracted[key] = build_forecast_row(
+                        company=company,
+                        filing=filing,
+                        accession_number=accession_number,
+                        document_name=document_name,
+                        document_url=document_url,
+                        metric=metric,
+                        fiscal_year=fiscal_year,
+                        forecast_value=forecast_value,
+                        extraction_kind=extraction_kind,
+                        excerpt=window,
+                    )
+    return sorted(extracted.values(), key=lambda item: (item["metric"], item["fiscal_year"]))
+
+
 def valuation_multiple(market_cap: float | None, metric: float | None, digits: int = 2) -> float | None:
     if market_cap is None or metric in (None, 0):
         return None
@@ -1761,6 +2295,21 @@ def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, A
             "Normalized net income proxy = fee-adjusted net income proxy - absolute special items.",
         ],
     }
+
+
+def select_latest_profit_forecast(forecasts: list[dict[str, Any]]) -> dict[str, Any] | None:
+    return select_latest_metric_forecast(forecasts, "net_income")
+
+
+def select_latest_metric_forecast(forecasts: list[dict[str, Any]], metric: str) -> dict[str, Any] | None:
+    metric_rows = [row for row in forecasts if row.get("metric") == metric]
+    if not metric_rows:
+        return None
+    return sorted(
+        metric_rows,
+        key=lambda item: (item.get("fiscal_year") or 0, item.get("updated_at_utc") or ""),
+        reverse=True,
+    )[0]
 
 
 def select_latest_balance_sheet_row(
@@ -1833,6 +2382,7 @@ def build_web_data(settings: dict[str, Any]) -> None:
     ensure_dir(companies_root)
 
     with db.connect() as conn:
+        refresh_profit_forecasts(conn, settings)
         companies = rows_to_dicts(
             conn.execute(
                 """
@@ -1846,11 +2396,13 @@ def build_web_data(settings: dict[str, Any]) -> None:
         quarterlies = rows_to_dicts(conn.execute("SELECT * FROM quarterly_financials ORDER BY ticker, fiscal_year, fiscal_period"))
         filings = rows_to_dicts(conn.execute("SELECT * FROM filings ORDER BY filing_date DESC, accession_number DESC"))
         market_quotes = rows_to_dicts(conn.execute("SELECT * FROM market_quotes ORDER BY ticker"))
+        profit_forecasts = rows_to_dicts(conn.execute("SELECT * FROM profit_forecasts ORDER BY ticker, fiscal_year DESC"))
 
     annuals_by_ticker: dict[str, list[dict[str, Any]]] = {}
     quarterlies_by_ticker: dict[str, list[dict[str, Any]]] = {}
     filings_by_ticker: dict[str, list[dict[str, Any]]] = {}
     market_quotes_by_ticker = {row["ticker"]: row for row in market_quotes}
+    forecasts_by_ticker: dict[str, list[dict[str, Any]]] = {}
 
     for row in annuals:
         annuals_by_ticker.setdefault(row["ticker"], []).append(row)
@@ -1858,6 +2410,8 @@ def build_web_data(settings: dict[str, Any]) -> None:
         quarterlies_by_ticker.setdefault(row["ticker"], []).append(row)
     for row in filings:
         filings_by_ticker.setdefault(row["ticker"], []).append(row)
+    for row in profit_forecasts:
+        forecasts_by_ticker.setdefault(row["ticker"], []).append(row)
 
     companies_by_cik: dict[str, list[dict[str, Any]]] = {}
     for company in companies:
@@ -1885,6 +2439,10 @@ def build_web_data(settings: dict[str, Any]) -> None:
         latest_filing = company_filings[0] if company_filings else None
         market_data = build_market_snapshot(market_quotes_by_ticker.get(primary_ticker), company_annuals, company_quarterlies)
         analysis = build_three_year_analysis(primary_company, company_annuals, market_data)
+        ticker_forecasts = forecasts_by_ticker.get(primary_ticker, [])
+        forecast = select_latest_metric_forecast(ticker_forecasts, "net_income")
+        revenue_forecast = select_latest_metric_forecast(ticker_forecasts, "revenue")
+        forward_pe = valuation_multiple(market_data.get("marketCap") if market_data else None, forecast.get("forecast_value") if forecast else None)
 
         summary = {
             "ticker": primary_ticker,
@@ -1921,6 +2479,15 @@ def build_web_data(settings: dict[str, Any]) -> None:
             "feeAdjustedNetIncome": analysis["latestFeeAdjustedNetIncome"],
             "normalizedNetIncomeGrowthPct": analysis["normalizedNetIncomeGrowthPct"],
             "normalizedPeProxy": analysis["normalizedPeProxy"],
+            "forecastNetIncome": forecast.get("forecast_value") if forecast else None,
+            "forecastNetIncomeFiscalYear": forecast.get("fiscal_year") if forecast else None,
+            "forecastSourceType": forecast.get("source_type") if forecast else None,
+            "forecastSourceName": forecast.get("source_name") if forecast else None,
+            "forecastRevenue": revenue_forecast.get("forecast_value") if revenue_forecast else None,
+            "forecastRevenueFiscalYear": revenue_forecast.get("fiscal_year") if revenue_forecast else None,
+            "forecastRevenueSourceType": revenue_forecast.get("source_type") if revenue_forecast else None,
+            "forecastRevenueSourceName": revenue_forecast.get("source_name") if revenue_forecast else None,
+            "forwardPeRatio": forward_pe,
         }
         summaries.append(summary)
 
@@ -1984,6 +2551,10 @@ def build_web_data(settings: dict[str, Any]) -> None:
         key=lambda item: item["marketData"]["marketCap"],
         reverse=True,
     )[:10]
+    top_forward_pe = sorted(
+        [item for item in summaries if item.get("forwardPeRatio") is not None],
+        key=lambda item: item["forwardPeRatio"],
+    )[:10]
     latest_filings = sorted(
         [item for item in summaries if item.get("latestFiling") and item["latestFiling"].get("filing_date")],
         key=lambda item: item["latestFiling"]["filing_date"],
@@ -2001,6 +2572,7 @@ def build_web_data(settings: dict[str, Any]) -> None:
             "topPs": top_ps,
             "topNormalizedGrowth": top_normalized_growth,
             "topMarketCap": top_market_cap,
+            "topForwardPe": top_forward_pe,
             "latestFilings": latest_filings,
         },
     }
@@ -2114,6 +2686,24 @@ def filter_companies(companies: list[dict[str, Any]], ticker: str | None, limit:
     if limit:
         companies = companies[:limit]
     return companies
+
+
+def filter_companies_by_universe(companies: list[dict[str, Any]], universe: str | None) -> list[dict[str, Any]]:
+    if not universe:
+        return companies
+    requested = {item.strip().lower() for item in universe.split(",") if item.strip()}
+    if not requested:
+        return companies
+    filtered: list[dict[str, Any]] = []
+    for company in companies:
+        sources = {
+            item.strip().lower()
+            for item in str(company.get("universeSource") or "").split(",")
+            if item.strip()
+        }
+        if sources & requested:
+            filtered.append(company)
+    return filtered
 
 
 def apply_resume_checkpoint(conn: sqlite3.Connection, companies: list[dict[str, Any]], resume: bool, ticker: str | None) -> tuple[list[dict[str, Any]], str | None]:
@@ -2279,6 +2869,60 @@ def run_daily_update(
         conn.commit()
 
 
+def refresh_official_guidance(
+    settings: dict[str, Any],
+    ticker: str | None = None,
+    universe: str | None = None,
+    limit: int | None = None,
+    force: bool = False,
+) -> None:
+    db = Database(Path(settings["sqlitePath"]))
+    with db.connect() as conn:
+        companies = get_companies_from_db(conn)
+        companies = filter_companies_by_universe(companies, universe)
+        companies = filter_companies(companies, ticker, limit)
+        if not companies:
+            print_json({"guidanceForecastsRefreshed": 0, "companies": 0})
+            return
+
+        annuals_by_ticker: dict[str, list[dict[str, Any]]] = {}
+        quarterlies_by_ticker: dict[str, list[dict[str, Any]]] = {}
+        for row in rows_to_dicts(conn.execute("SELECT * FROM annual_financials ORDER BY ticker, fiscal_year")):
+            annuals_by_ticker.setdefault(row["ticker"], []).append(row)
+        for row in rows_to_dicts(conn.execute("SELECT * FROM quarterly_financials ORDER BY ticker, fiscal_year, fiscal_period")):
+            quarterlies_by_ticker.setdefault(row["ticker"], []).append(row)
+
+        manual_forecasts = load_profit_forecasts(settings)
+        existing_forecasts = rows_to_dicts(conn.execute("SELECT * FROM profit_forecasts"))
+        target_tickers = {company["ticker"] for company in companies}
+        preserved_official_rows = [
+            row
+            for row in existing_forecasts
+            if row.get("source_type") == "official-guidance" and row.get("ticker") not in target_tickers
+        ]
+        official_rows: list[dict[str, Any]] = []
+
+        total = len(companies)
+        append_log(settings, f"Official guidance refresh started for {total} companies")
+        for index, company in enumerate(companies, start=1):
+            append_log(settings, f"Official guidance [{index}/{total}] {company['ticker']} {company['cik']}")
+            annuals = annuals_by_ticker.get(company["ticker"], [])
+            quarterlies = quarterlies_by_ticker.get(company["ticker"], [])
+            balance_sheet_row = select_latest_balance_sheet_row(quarterlies, annuals)
+            shares_outstanding = balance_sheet_row.get("shares_outstanding") if balance_sheet_row else None
+            forecasts = extract_official_guidance_forecasts(company, settings, shares_outstanding, force=force)
+            official_rows.extend(forecasts)
+
+        merged_rows = merge_profit_forecasts(manual_forecasts, preserved_official_rows + official_rows)
+        upsert_profit_forecasts(conn, merged_rows)
+        conn.commit()
+        metric_counts: dict[str, int] = {}
+        for row in official_rows:
+            metric_counts[row["metric"]] = metric_counts.get(row["metric"], 0) + 1
+        append_log(settings, f"Official guidance refresh completed with {len(official_rows)} extracted forecasts")
+        print_json({"guidanceForecastsRefreshed": len(official_rows), "metrics": metric_counts, "companies": total, "storedForecasts": len(merged_rows)})
+
+
 def register_task(python_exe: str, script_path: str, daily_time: str) -> None:
     task_name = "StockSecDailyUpdatePython"
     command = f'"{python_exe}" "{script_path}" daily-update'
@@ -2333,6 +2977,11 @@ def main(argv: list[str] | None = None) -> int:
 
     subparsers.add_parser("build-web-data")
     subparsers.add_parser("refresh-companies")
+    refresh_guidance = subparsers.add_parser("refresh-official-guidance")
+    refresh_guidance.add_argument("--ticker")
+    refresh_guidance.add_argument("--universe")
+    refresh_guidance.add_argument("--limit", type=int)
+    refresh_guidance.add_argument("--force", action="store_true")
     stage_checkpoint = subparsers.add_parser("stage-universe-checkpoint")
     stage_checkpoint.add_argument("--limit", type=int)
     market_sync = subparsers.add_parser("sync-market-data")
@@ -2381,6 +3030,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "refresh-companies":
         refresh_companies(settings)
+        return 0
+    if args.command == "refresh-official-guidance":
+        refresh_official_guidance(settings, ticker=args.ticker, universe=args.universe, limit=args.limit, force=args.force)
         return 0
     if args.command == "stage-universe-checkpoint":
         stage_universe_checkpoint(settings, limit=args.limit)

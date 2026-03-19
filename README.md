@@ -156,3 +156,14 @@ http://127.0.0.1:8080/dashboard.html
 - `python .\scripts\sec_db.py refresh-companies` to rebuild and stage the universe only
 - `powershell -ExecutionPolicy Bypass -File .\scripts\Sync-Full-Python.ps1 -Resume -Limit 100` to sync staged companies in batches
 - To keep running batches until the staged universe is done, use `powershell -ExecutionPolicy Bypass -File .\scripts\Sync-Staged-Until-Complete.ps1 -BatchSize 100`
+
+## GitHub Pages
+
+- To publish the current static dashboard to an external site, mirror `web/` into `docs/`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\Sync-Web-Docs.ps1
+```
+
+- The repo includes `.github/workflows/deploy-pages.yml`, which deploys `docs/` to GitHub Pages on every push to `main`.
+- After the first push, set Pages source to `GitHub Actions` in the repository settings if it is not already enabled.
