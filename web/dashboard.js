@@ -14,7 +14,7 @@
     sectorCompanies: (count) => `${count} names`,
     allSectors: 'All Sectors',
     filterMetricPlaceholder: 'Metric',
-    filterValuePlaceholder: 'Value',
+    filterValuePlaceholder: 'Value, e.g. 10B or 500M',
     filterMetricLabel: (key) => ({
       marketCap: 'Market Cap',
       revenue: 'Revenue',

@@ -134,8 +134,7 @@
             class="filter-value"
             data-filter-field="value"
             data-filter-index="${index}"
-            type="number"
-            step="any"
+            type="text"
             placeholder="${config.text.filterValuePlaceholder}"
             value="${filter.value}"
           >
@@ -160,12 +159,25 @@
       applyFilters();
     }
 
+    function parseFilterValue(rawValue) {
+      if (rawValue == null) return NaN;
+      const normalized = String(rawValue).trim().toUpperCase();
+      if (!normalized) return NaN;
+      const match = normalized.match(/^(-?\d+(?:\.\d+)?)([BM])?$/);
+      if (!match) return Number(normalized);
+      const value = Number(match[1]);
+      const unit = match[2];
+      if (unit === 'B') return value * 1_000_000_000;
+      if (unit === 'M') return value * 1_000_000;
+      return value;
+    }
+
     function matchesCustomFilter(item, filter) {
       if (!filter.metric || filter.value === '') return true;
       const metric = filterMetrics.find((entry) => entry.key === filter.metric);
       if (!metric) return true;
       const itemValue = metric.getValue(item);
-      const compareValue = Number(filter.value);
+      const compareValue = parseFilterValue(filter.value);
       if (itemValue == null || Number.isNaN(compareValue)) return false;
       if (filter.operator === 'gt') return itemValue > compareValue;
       if (filter.operator === 'gte') return itemValue >= compareValue;

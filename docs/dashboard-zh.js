@@ -14,7 +14,7 @@
     sectorCompanies: (count) => `${count} 家`,
     allSectors: '全部行业',
     filterMetricPlaceholder: '指标',
-    filterValuePlaceholder: '自定义数值',
+    filterValuePlaceholder: '自定义数值，如 10B 或 500M',
     filterMetricLabel: (key) => ({
       marketCap: '市值',
       revenue: '营收规模',
