@@ -48,6 +48,7 @@
     normalizedNetIncome: 'Normalized NI',
     normalizedGrowth: 'Normalized NI YoY',
     normalizedGrowthGeomean: '3Y Geometric Core NI Growth',
+    normalizedProjectionGrowth: '3Y Geometric Revenue Growth',
     normalizedPe: 'Normalized P/E',
     projectedFiveYearNormalizedNetIncome: 'Projected 5Y Core NI Sum',
     marketCapPayback: '5Y Market Cap Payback',
@@ -66,6 +67,7 @@
     operatingMargin: (value) => value == null ? 'Operating margin unavailable' : `Operating margin ${value}%`,
     proxyMetric: 'Proxy metric derived from SEC structured concepts',
     marketCapPaybackFootnote: 'Projected next 5 years normalized NI proxy sum / current market cap',
+    marketCapPaybackProjectionFootnote: 'Used as the growth assumption for the 5Y core NI projection',
     forecastBasis: (year, sourceType, sourceName) => {
       if (!year && !sourceType && !sourceName) return 'Forecast input unavailable';
       const parts = [];

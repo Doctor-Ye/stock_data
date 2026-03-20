@@ -155,6 +155,8 @@
       "latestNormalizedNetIncomeProxy": 4207000000.0,
       "normalizedNetIncomeGrowthPct": -25.09,
       "normalizedNetIncomeGrowthGeomeanPct": null,
+      "revenueGrowthGeomeanPct": null,
+      "normalizedNetIncomeProjectionGrowthPct": null,
       "normalizedPeProxy": null,
       "projectedFiveYearNormalizedNetIncome": null,
       "fiveYearMarketCapPaybackPct": null,
@@ -165,7 +167,8 @@
       "methodology": [
         "Fee-adjusted net income proxy = net income - stock-based compensation expense.",
         "Normalized net income proxy = fee-adjusted net income proxy - absolute special items.",
-        "5Y market-cap payback ratio = projected next 5 years normalized NI proxy sum / current market cap."
+        "5Y market-cap payback ratio = projected next 5 years normalized NI proxy sum / current market cap.",
+        "Projection growth uses 3Y geometric revenue growth."
       ]
     },
     "revenueBillions": 24.22,

@@ -287,6 +287,7 @@
         metricCard(config.text.feeAdjustedNetIncome, fmtCurrencyCompact(company.feeAdjustedNetIncome), config.text.proxyMetric),
         metricCard(config.text.normalizedGrowth, fmtPercent(company.normalizedNetIncomeGrowthPct), config.text.proxyMetric),
         metricCard(config.text.normalizedGrowthGeomean, fmtPercent(company.normalizedNetIncomeGrowthGeomeanPct), config.text.proxyMetric),
+        metricCard(config.text.normalizedProjectionGrowth, fmtPercent(company.normalizedNetIncomeProjectionGrowthPct), config.text.marketCapPaybackProjectionFootnote),
         metricCard(config.text.normalizedPe, fmtRatio(company.normalizedPeProxy), config.text.proxyMetric),
         metricCard(config.text.projectedFiveYearNormalizedNetIncome, fmtCurrencyCompact(company.projectedFiveYearNormalizedNetIncome), config.text.proxyMetric),
         metricCard(config.text.marketCapPayback, fmtPercent(company.fiveYearMarketCapPaybackPct), config.text.marketCapPaybackFootnote),

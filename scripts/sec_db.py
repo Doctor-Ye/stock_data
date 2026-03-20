@@ -2292,7 +2292,10 @@ def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, A
     normalized_pe = valuation_multiple(market_cap, latest_normalized)
     normalized_values = [normalized_net_income_proxy(row) for row in recent_years]
     normalized_growth_geomean = geometric_average_growth(normalized_values)
-    projected_five_year_normalized = projected_five_year_normalized_net_income(latest_normalized, normalized_growth_geomean)
+    revenue_values = [row.get("revenue") for row in recent_years]
+    revenue_growth_geomean = geometric_average_growth(revenue_values)
+    normalized_growth_for_projection = revenue_growth_geomean
+    projected_five_year_normalized = projected_five_year_normalized_net_income(latest_normalized, normalized_growth_for_projection)
     five_year_market_cap_payback = market_cap_payback_ratio(market_cap, projected_five_year_normalized)
     operating_margin = ratio_or_none(latest_operating_profit, latest.get("revenue") if latest else None)
     if operating_margin is not None:
@@ -2312,7 +2315,7 @@ def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, A
         lines.append(f"Normalized P/E proxy is {normalized_pe}x based on current market cap.")
     if five_year_market_cap_payback is not None:
         lines.append(
-            f"5Y market-cap payback ratio is {five_year_market_cap_payback}% using 3Y geometric normalized NI growth."
+            f"5Y market-cap payback ratio is {five_year_market_cap_payback}% using 3Y geometric revenue growth."
         )
 
     return {
@@ -2333,6 +2336,8 @@ def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, A
         "latestNormalizedNetIncomeProxy": latest_normalized,
         "normalizedNetIncomeGrowthPct": normalized_growth,
         "normalizedNetIncomeGrowthGeomeanPct": normalized_growth_geomean,
+        "revenueGrowthGeomeanPct": revenue_growth_geomean,
+        "normalizedNetIncomeProjectionGrowthPct": normalized_growth_for_projection,
         "normalizedPeProxy": normalized_pe,
         "projectedFiveYearNormalizedNetIncome": projected_five_year_normalized,
         "fiveYearMarketCapPaybackPct": five_year_market_cap_payback,
@@ -2341,6 +2346,7 @@ def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, A
             "Fee-adjusted net income proxy = net income - stock-based compensation expense.",
             "Normalized net income proxy = fee-adjusted net income proxy - absolute special items.",
             "5Y market-cap payback ratio = projected next 5 years normalized NI proxy sum / current market cap.",
+            "Projection growth uses 3Y geometric revenue growth.",
         ],
     }
 

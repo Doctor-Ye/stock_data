@@ -48,6 +48,7 @@
     normalizedNetIncome: '扣非净利润',
     normalizedGrowth: '扣非净利润增速',
     normalizedGrowthGeomean: '3年扣非净利润几何增速',
+    normalizedProjectionGrowth: '3年营收几何增速',
     normalizedPe: '扣非净利润市盈率',
     projectedFiveYearNormalizedNetIncome: '未来5年扣非净利润之和',
     marketCapPayback: '5年市值回收率',
@@ -66,6 +67,7 @@
     operatingMargin: (value) => value == null ? '缺少营业利润率口径' : `营业利润率 ${value}%`,
     proxyMetric: '基于 SEC 结构化科目生成的代理口径',
     marketCapPaybackFootnote: '未来5年扣非净利润预测总和 / 当前市值',
+    marketCapPaybackProjectionFootnote: '作为未来5年扣非净利润投射的增长假设',
     forecastBasis: (year, sourceType, sourceName) => {
       if (!year && !sourceType && !sourceName) return '暂无预测口径';
       const parts = [];
