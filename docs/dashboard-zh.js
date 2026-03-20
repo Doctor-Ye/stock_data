@@ -21,6 +21,7 @@
       revenueGrowth: '营收增速',
       psRatio: 'PS',
       normalizedPe: '扣非市盈率',
+      marketCapPayback: '5年市值回收率',
       forecastRevenue: '预测营收',
       forecastNetIncome: '预测净利润',
       forwardPe: '前瞻市盈率',
@@ -37,6 +38,7 @@
     listOpProfit: '营业利润',
     listCoreGrowth: '扣非增速',
     listNormalizedPe: '扣非市盈率',
+    listMarketCapPayback: '5年回收率',
     aliases: '别名代码',
     previousClose: '上一交易日收盘价',
     marketCap: '市值',
@@ -45,7 +47,10 @@
     feeAdjustedNetIncome: '扣费净利润',
     normalizedNetIncome: '扣非净利润',
     normalizedGrowth: '扣非净利润增速',
+    normalizedGrowthGeomean: '3年扣非净利润几何增速',
     normalizedPe: '扣非净利润市盈率',
+    projectedFiveYearNormalizedNetIncome: '未来5年扣非净利润之和',
+    marketCapPayback: '5年市值回收率',
     forecastRevenue: '预测营收',
     forecastNetIncome: '预测净利润',
     forwardPeRatio: '前瞻市盈率',
@@ -60,6 +65,7 @@
     balanceSheetBasis: (form, date) => date ? `${form || 'SEC'}，申报日期 ${date}` : '缺少资产负债表口径',
     operatingMargin: (value) => value == null ? '缺少营业利润率口径' : `营业利润率 ${value}%`,
     proxyMetric: '基于 SEC 结构化科目生成的代理口径',
+    marketCapPaybackFootnote: '未来5年扣非净利润预测总和 / 当前市值',
     forecastBasis: (year, sourceType, sourceName) => {
       if (!year && !sourceType && !sourceName) return '暂无预测口径';
       const parts = [];

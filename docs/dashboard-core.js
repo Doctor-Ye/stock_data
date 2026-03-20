@@ -15,6 +15,7 @@
       { key: 'revenueGrowth', getValue: (item) => item.revenueGrowthPct },
       { key: 'psRatio', getValue: (item) => item.psRatio },
       { key: 'normalizedPe', getValue: (item) => item.normalizedPeProxy },
+      { key: 'marketCapPayback', getValue: (item) => item.fiveYearMarketCapPaybackPct },
       { key: 'forecastRevenue', getValue: (item) => item.forecastRevenue },
       { key: 'forecastNetIncome', getValue: (item) => item.forecastNetIncome },
       { key: 'forwardPe', getValue: (item) => item.forwardPeRatio },
@@ -198,6 +199,7 @@
         if (sort === 'feeAdjustedNetIncome-desc') return (b.feeAdjustedNetIncome || 0) - (a.feeAdjustedNetIncome || 0);
         if (sort === 'normalizedGrowth-desc') return (b.normalizedNetIncomeGrowthPct || -Infinity) - (a.normalizedNetIncomeGrowthPct || -Infinity);
         if (sort === 'normalizedPe-asc') return (a.normalizedPeProxy || Number.MAX_SAFE_INTEGER) - (b.normalizedPeProxy || Number.MAX_SAFE_INTEGER);
+        if (sort === 'marketCapPayback-desc') return (b.fiveYearMarketCapPaybackPct || -Infinity) - (a.fiveYearMarketCapPaybackPct || -Infinity);
         return (b.latestAnnual?.revenue || 0) - (a.latestAnnual?.revenue || 0);
       });
       return companies;
@@ -227,6 +229,7 @@
             <span class="pill">${config.text.listOpProfit} ${fmtCurrencyCompact(item.operatingProfit)}</span>
             <span class="pill">${config.text.listCoreGrowth} ${fmtPercent(item.normalizedNetIncomeGrowthPct)}</span>
             <span class="pill">${config.text.listNormalizedPe || config.text.normalizedPe} ${fmtRatio(item.normalizedPeProxy)}</span>
+            <span class="pill">${config.text.listMarketCapPayback || config.text.marketCapPayback} ${fmtPercent(item.fiveYearMarketCapPaybackPct)}</span>
           </div>
         </article>
       `).join('');
@@ -283,7 +286,10 @@
         metricCard(config.text.operatingProfit, fmtCurrencyCompact(company.operatingProfit), config.text.operatingMargin(analysis.latestOperatingMarginPct)),
         metricCard(config.text.feeAdjustedNetIncome, fmtCurrencyCompact(company.feeAdjustedNetIncome), config.text.proxyMetric),
         metricCard(config.text.normalizedGrowth, fmtPercent(company.normalizedNetIncomeGrowthPct), config.text.proxyMetric),
+        metricCard(config.text.normalizedGrowthGeomean, fmtPercent(company.normalizedNetIncomeGrowthGeomeanPct), config.text.proxyMetric),
         metricCard(config.text.normalizedPe, fmtRatio(company.normalizedPeProxy), config.text.proxyMetric),
+        metricCard(config.text.projectedFiveYearNormalizedNetIncome, fmtCurrencyCompact(company.projectedFiveYearNormalizedNetIncome), config.text.proxyMetric),
+        metricCard(config.text.marketCapPayback, fmtPercent(company.fiveYearMarketCapPaybackPct), config.text.marketCapPaybackFootnote),
         metricCard(config.text.forecastRevenue, fmtCurrencyCompact(company.forecastRevenue), config.text.forecastBasis(company.forecastRevenueFiscalYear, company.forecastRevenueSourceType, company.forecastRevenueSourceName)),
         metricCard(config.text.forecastNetIncome, fmtCurrencyCompact(company.forecastNetIncome), config.text.forecastBasis(company.forecastNetIncomeFiscalYear, company.forecastSourceType, company.forecastSourceName)),
         metricCard(config.text.forwardPeRatio, fmtRatio(company.forwardPeRatio), config.text.forecastBasis(company.forecastNetIncomeFiscalYear, company.forecastSourceType, company.forecastSourceName)),

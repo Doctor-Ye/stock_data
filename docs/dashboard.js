@@ -21,6 +21,7 @@
       revenueGrowth: 'Revenue Growth %',
       psRatio: 'P/S',
       normalizedPe: 'Normalized P/E',
+      marketCapPayback: '5Y Market Cap Payback %',
       forecastRevenue: 'Forecast Revenue',
       forecastNetIncome: 'Forecast Net Income',
       forwardPe: 'Forward P/E',
@@ -37,6 +38,7 @@
     listOpProfit: 'Op Profit',
     listCoreGrowth: 'Core NI YoY',
     listNormalizedPe: 'Normalized P/E',
+    listMarketCapPayback: '5Y Payback',
     aliases: 'Aliases',
     previousClose: 'Previous Close',
     marketCap: 'Market Cap',
@@ -45,7 +47,10 @@
     feeAdjustedNetIncome: 'Fee-Adjusted NI',
     normalizedNetIncome: 'Normalized NI',
     normalizedGrowth: 'Normalized NI YoY',
+    normalizedGrowthGeomean: '3Y Geometric Core NI Growth',
     normalizedPe: 'Normalized P/E',
+    projectedFiveYearNormalizedNetIncome: 'Projected 5Y Core NI Sum',
+    marketCapPayback: '5Y Market Cap Payback',
     forecastRevenue: 'Forecast Revenue',
     forecastNetIncome: 'Forecast Net Income',
     forwardPeRatio: 'Forward P/E',
@@ -60,6 +65,7 @@
     balanceSheetBasis: (form, date) => date ? `${form || 'SEC'} filed ${date}` : 'Latest balance-sheet basis unavailable',
     operatingMargin: (value) => value == null ? 'Operating margin unavailable' : `Operating margin ${value}%`,
     proxyMetric: 'Proxy metric derived from SEC structured concepts',
+    marketCapPaybackFootnote: 'Projected next 5 years normalized NI proxy sum / current market cap',
     forecastBasis: (year, sourceType, sourceName) => {
       if (!year && !sourceType && !sourceName) return 'Forecast input unavailable';
       const parts = [];

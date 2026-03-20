@@ -2241,6 +2241,42 @@ def valuation_multiple(market_cap: float | None, metric: float | None, digits: i
     return round(float(market_cap) / float(metric), digits)
 
 
+def geometric_average_growth(values: list[float | None]) -> float | None:
+    valid = [float(value) for value in values if value is not None]
+    if len(valid) < 3:
+        return None
+    start = valid[0]
+    end = valid[-1]
+    periods = len(valid) - 1
+    if start <= 0 or end <= 0 or periods <= 0:
+        return None
+    return round((((end / start) ** (1 / periods)) - 1) * 100, 2)
+
+
+def projected_five_year_normalized_net_income(
+    latest_normalized_net_income: float | None,
+    geometric_growth_pct: float | None,
+) -> float | None:
+    if latest_normalized_net_income is None or geometric_growth_pct is None:
+        return None
+    if latest_normalized_net_income <= 0:
+        return None
+    growth_rate = geometric_growth_pct / 100
+    total = 0.0
+    for year in range(1, 6):
+        total += float(latest_normalized_net_income) * ((1 + growth_rate) ** year)
+    return round(total, 2)
+
+
+def market_cap_payback_ratio(
+    market_cap: float | None,
+    projected_total: float | None,
+) -> float | None:
+    if market_cap is None or projected_total is None or market_cap <= 0:
+        return None
+    return round((float(projected_total) / float(market_cap)) * 100, 2)
+
+
 def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, Any]], market_data: dict[str, Any] | None) -> dict[str, Any]:
     recent_years = annuals[-3:]
     latest = recent_years[-1] if recent_years else None
@@ -2254,6 +2290,10 @@ def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, A
     previous_normalized = normalized_net_income_proxy(previous)
     normalized_growth = growth_pct(latest_normalized, previous_normalized)
     normalized_pe = valuation_multiple(market_cap, latest_normalized)
+    normalized_values = [normalized_net_income_proxy(row) for row in recent_years]
+    normalized_growth_geomean = geometric_average_growth(normalized_values)
+    projected_five_year_normalized = projected_five_year_normalized_net_income(latest_normalized, normalized_growth_geomean)
+    five_year_market_cap_payback = market_cap_payback_ratio(market_cap, projected_five_year_normalized)
     operating_margin = ratio_or_none(latest_operating_profit, latest.get("revenue") if latest else None)
     if operating_margin is not None:
         operating_margin = round(operating_margin * 100, 2)
@@ -2270,6 +2310,10 @@ def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, A
         lines.append(f"Normalized net income proxy growth is {normalized_growth}% YoY, trend {trend}.")
     if normalized_pe is not None:
         lines.append(f"Normalized P/E proxy is {normalized_pe}x based on current market cap.")
+    if five_year_market_cap_payback is not None:
+        lines.append(
+            f"5Y market-cap payback ratio is {five_year_market_cap_payback}% using 3Y geometric normalized NI growth."
+        )
 
     return {
         "years": [
@@ -2288,11 +2332,15 @@ def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, A
         "latestFeeAdjustedNetIncome": latest_fee_adjusted,
         "latestNormalizedNetIncomeProxy": latest_normalized,
         "normalizedNetIncomeGrowthPct": normalized_growth,
+        "normalizedNetIncomeGrowthGeomeanPct": normalized_growth_geomean,
         "normalizedPeProxy": normalized_pe,
+        "projectedFiveYearNormalizedNetIncome": projected_five_year_normalized,
+        "fiveYearMarketCapPaybackPct": five_year_market_cap_payback,
         "commentary": lines,
         "methodology": [
             "Fee-adjusted net income proxy = net income - stock-based compensation expense.",
             "Normalized net income proxy = fee-adjusted net income proxy - absolute special items.",
+            "5Y market-cap payback ratio = projected next 5 years normalized NI proxy sum / current market cap.",
         ],
     }
 
@@ -2478,7 +2526,10 @@ def build_web_data(settings: dict[str, Any]) -> None:
             "operatingProfit": analysis["latestOperatingProfit"],
             "feeAdjustedNetIncome": analysis["latestFeeAdjustedNetIncome"],
             "normalizedNetIncomeGrowthPct": analysis["normalizedNetIncomeGrowthPct"],
+            "normalizedNetIncomeGrowthGeomeanPct": analysis["normalizedNetIncomeGrowthGeomeanPct"],
             "normalizedPeProxy": analysis["normalizedPeProxy"],
+            "projectedFiveYearNormalizedNetIncome": analysis["projectedFiveYearNormalizedNetIncome"],
+            "fiveYearMarketCapPaybackPct": analysis["fiveYearMarketCapPaybackPct"],
             "forecastNetIncome": forecast.get("forecast_value") if forecast else None,
             "forecastNetIncomeFiscalYear": forecast.get("fiscal_year") if forecast else None,
             "forecastSourceType": forecast.get("source_type") if forecast else None,
@@ -2546,6 +2597,11 @@ def build_web_data(settings: dict[str, Any]) -> None:
         key=lambda item: item["normalizedNetIncomeGrowthPct"],
         reverse=True,
     )[:10]
+    top_market_cap_payback = sorted(
+        [item for item in summaries if item.get("fiveYearMarketCapPaybackPct") is not None],
+        key=lambda item: item["fiveYearMarketCapPaybackPct"],
+        reverse=True,
+    )[:10]
     top_market_cap = sorted(
         [item for item in summaries if item.get("marketData") and item["marketData"].get("marketCap") is not None],
         key=lambda item: item["marketData"]["marketCap"],
@@ -2571,6 +2627,7 @@ def build_web_data(settings: dict[str, Any]) -> None:
             "topProfit": top_profit,
             "topPs": top_ps,
             "topNormalizedGrowth": top_normalized_growth,
+            "topMarketCapPayback": top_market_cap_payback,
             "topMarketCap": top_market_cap,
             "topForwardPe": top_forward_pe,
             "latestFilings": latest_filings,
