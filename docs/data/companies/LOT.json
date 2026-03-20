@@ -120,14 +120,18 @@
       "latestFeeAdjustedNetIncome": -1136855000.0,
       "latestNormalizedNetIncomeProxy": -1151087000.0,
       "normalizedNetIncomeGrowthPct": -52.71,
+      "normalizedNetIncomeGrowthGeomeanPct": null,
       "normalizedPeProxy": null,
+      "projectedFiveYearNormalizedNetIncome": null,
+      "fiveYearMarketCapPaybackPct": null,
       "commentary": [
         "FY 2024: PS 0.81x, operating profit -0.79B, normalized NI proxy -1.15B.",
         "Normalized net income proxy growth is -52.71% YoY, trend declining."
       ],
       "methodology": [
         "Fee-adjusted net income proxy = net income - stock-based compensation expense.",
-        "Normalized net income proxy = fee-adjusted net income proxy - absolute special items."
+        "Normalized net income proxy = fee-adjusted net income proxy - absolute special items.",
+        "5Y market-cap payback ratio = projected next 5 years normalized NI proxy sum / current market cap."
       ]
     },
     "revenueBillions": 0.92,
@@ -140,7 +144,10 @@
     "operatingProfit": -786322000.0,
     "feeAdjustedNetIncome": -1136855000.0,
     "normalizedNetIncomeGrowthPct": -52.71,
+    "normalizedNetIncomeGrowthGeomeanPct": null,
     "normalizedPeProxy": null,
+    "projectedFiveYearNormalizedNetIncome": null,
+    "fiveYearMarketCapPaybackPct": null,
     "forecastNetIncome": null,
     "forecastNetIncomeFiscalYear": null,
     "forecastSourceType": null,

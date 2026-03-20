@@ -22,6 +22,15 @@ if ($LASTEXITCODE -gt 7) {
     throw "robocopy failed with exit code $LASTEXITCODE"
 }
 
+$sourceDataPath = Join-Path $sourcePath "data"
+$destinationDataPath = Join-Path $destinationPath "data"
+if (Test-Path $sourceDataPath) {
+    if (Test-Path $destinationDataPath) {
+        Remove-Item -Recurse -Force $destinationDataPath
+    }
+    Copy-Item -Recurse -Force $sourceDataPath $destinationDataPath
+}
+
 New-Item -ItemType File -Path (Join-Path $destinationPath ".nojekyll") -Force | Out-Null
 
 Write-Output "Synced web site to $destinationPath"

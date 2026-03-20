@@ -180,14 +180,18 @@
       "latestFeeAdjustedNetIncome": -3305000000.0,
       "latestNormalizedNetIncomeProxy": -3305000000.0,
       "normalizedNetIncomeGrowthPct": 17.17,
+      "normalizedNetIncomeGrowthGeomeanPct": null,
       "normalizedPeProxy": null,
+      "projectedFiveYearNormalizedNetIncome": null,
+      "fiveYearMarketCapPaybackPct": null,
       "commentary": [
         "FY 2025: PS 10.84x, operating profit -3.07B, normalized NI proxy -3.31B.",
         "Normalized net income proxy growth is 17.17% YoY, trend improving."
       ],
       "methodology": [
         "Fee-adjusted net income proxy = net income - stock-based compensation expense.",
-        "Normalized net income proxy = fee-adjusted net income proxy - absolute special items."
+        "Normalized net income proxy = fee-adjusted net income proxy - absolute special items.",
+        "5Y market-cap payback ratio = projected next 5 years normalized NI proxy sum / current market cap."
       ]
     },
     "revenueBillions": 1.94,
@@ -200,7 +204,10 @@
     "operatingProfit": -3074000000.0,
     "feeAdjustedNetIncome": -3305000000.0,
     "normalizedNetIncomeGrowthPct": 17.17,
+    "normalizedNetIncomeGrowthGeomeanPct": null,
     "normalizedPeProxy": null,
+    "projectedFiveYearNormalizedNetIncome": null,
+    "fiveYearMarketCapPaybackPct": null,
     "forecastNetIncome": null,
     "forecastNetIncomeFiscalYear": null,
     "forecastSourceType": null,
