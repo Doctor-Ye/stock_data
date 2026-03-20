@@ -1,8 +1,25 @@
 ﻿(function () {
   function createDashboard(config) {
-    const state = { summary: null, filteredCompanies: [], selectedTicker: null, detailCache: new Map() };
+    const state = {
+      summary: null,
+      filteredCompanies: [],
+      selectedTicker: null,
+      detailCache: new Map(),
+      customFilters: Array.from({ length: 3 }, () => ({ metric: '', operator: 'gte', value: '' })),
+    };
     const numberFmt = new Intl.NumberFormat(config.locale, { maximumFractionDigits: 2 });
     const integerFmt = new Intl.NumberFormat(config.locale, { maximumFractionDigits: 0 });
+    const filterMetrics = [
+      { key: 'marketCap', getValue: (item) => item.marketData?.marketCap },
+      { key: 'revenue', getValue: (item) => item.latestAnnual?.revenue },
+      { key: 'revenueGrowth', getValue: (item) => item.revenueGrowthPct },
+      { key: 'psRatio', getValue: (item) => item.psRatio },
+      { key: 'normalizedPe', getValue: (item) => item.normalizedPeProxy },
+      { key: 'forecastRevenue', getValue: (item) => item.forecastRevenue },
+      { key: 'forecastNetIncome', getValue: (item) => item.forecastNetIncome },
+      { key: 'forwardPe', getValue: (item) => item.forwardPeRatio },
+    ];
+    const filterOperators = ['gt', 'gte', 'lt', 'lte', 'eq'];
 
     const fmtNumber = (value) => value == null ? '--' : numberFmt.format(value);
     const fmtInteger = (value) => value == null ? '--' : integerFmt.format(value);
@@ -103,61 +120,58 @@
         .join('');
     }
 
-    function buildFilterOptions(summary) {
-      document.getElementById('market-cap-select').innerHTML = [
-        `<option value="">${config.text.allMarketCaps}</option>`,
-        `<option value="mega">${config.text.marketCapMega}</option>`,
-        `<option value="large">${config.text.marketCapLarge}</option>`,
-        `<option value="mid">${config.text.marketCapMid}</option>`,
-        `<option value="small">${config.text.marketCapSmall}</option>`,
-        `<option value="missing">${config.text.marketCapMissing}</option>`,
-      ].join('');
+    function renderCustomFilters() {
+      document.getElementById('custom-filter-grid').innerHTML = state.customFilters.map((filter, index) => `
+        <div class="filter-row">
+          <select data-filter-field="metric" data-filter-index="${index}">
+            <option value="">${config.text.filterMetricPlaceholder}</option>
+            ${filterMetrics.map((metric) => `<option value="${metric.key}" ${filter.metric === metric.key ? 'selected' : ''}>${config.text.filterMetricLabel(metric.key)}</option>`).join('')}
+          </select>
+          <select data-filter-field="operator" data-filter-index="${index}">
+            ${filterOperators.map((operator) => `<option value="${operator}" ${filter.operator === operator ? 'selected' : ''}>${config.text.filterOperatorLabel(operator)}</option>`).join('')}
+          </select>
+          <input
+            class="filter-value"
+            data-filter-field="value"
+            data-filter-index="${index}"
+            type="number"
+            step="any"
+            placeholder="${config.text.filterValuePlaceholder}"
+            value="${filter.value}"
+          >
+        </div>
+      `).join('');
 
-      document.getElementById('revenue-scale-select').innerHTML = [
-        `<option value="">${config.text.allRevenueScales}</option>`,
-        `<option value="mega">${config.text.revenueScaleMega}</option>`,
-        `<option value="large">${config.text.revenueScaleLarge}</option>`,
-        `<option value="mid">${config.text.revenueScaleMid}</option>`,
-        `<option value="small">${config.text.revenueScaleSmall}</option>`,
-        `<option value="missing">${config.text.revenueScaleMissing}</option>`,
-      ].join('');
-
-      document.getElementById('revenue-growth-select').innerHTML = [
-        `<option value="">${config.text.allRevenueGrowthBands}</option>`,
-        `<option value="gt20">${config.text.revenueGrowthGt20}</option>`,
-        `<option value="10to20">${config.text.revenueGrowth10To20}</option>`,
-        `<option value="0to10">${config.text.revenueGrowth0To10}</option>`,
-        `<option value="negative">${config.text.revenueGrowthNegative}</option>`,
-        `<option value="missing">${config.text.revenueGrowthMissing}</option>`,
-      ].join('');
-
-      document.getElementById('ps-band-select').innerHTML = [
-        `<option value="">${config.text.allPsBands}</option>`,
-        `<option value="lt1">${config.text.psLt1}</option>`,
-        `<option value="1to3">${config.text.ps1To3}</option>`,
-        `<option value="3to8">${config.text.ps3To8}</option>`,
-        `<option value="gt8">${config.text.psGt8}</option>`,
-        `<option value="missing">${config.text.psMissing}</option>`,
-      ].join('');
-
-      document.getElementById('normalized-pe-band-select').innerHTML = [
-        `<option value="">${config.text.allNormalizedPeBands}</option>`,
-        `<option value="lt10">${config.text.normalizedPeLt10}</option>`,
-        `<option value="10to20">${config.text.normalizedPe10To20}</option>`,
-        `<option value="20to35">${config.text.normalizedPe20To35}</option>`,
-        `<option value="gt35">${config.text.normalizedPeGt35}</option>`,
-        `<option value="missing">${config.text.normalizedPeMissing}</option>`,
-      ].join('');
+      document.querySelectorAll('[data-filter-field="metric"]').forEach((element) => {
+        element.addEventListener('change', handleCustomFilterChange);
+      });
+      document.querySelectorAll('[data-filter-field="operator"]').forEach((element) => {
+        element.addEventListener('change', handleCustomFilterChange);
+      });
+      document.querySelectorAll('[data-filter-field="value"]').forEach((element) => {
+        element.addEventListener('input', handleCustomFilterChange);
+      });
     }
 
-    function matchesNumericBand(value, band, ranges) {
-      if (!band) return true;
-      if (band === 'missing') return value == null;
-      if (value == null) return false;
-      const range = ranges[band];
-      if (!range) return true;
-      if (range.min != null && value < range.min) return false;
-      if (range.max != null && value >= range.max) return false;
+    function handleCustomFilterChange(event) {
+      const index = Number(event.target.dataset.filterIndex);
+      const field = event.target.dataset.filterField;
+      state.customFilters[index][field] = event.target.value;
+      applyFilters();
+    }
+
+    function matchesCustomFilter(item, filter) {
+      if (!filter.metric || filter.value === '') return true;
+      const metric = filterMetrics.find((entry) => entry.key === filter.metric);
+      if (!metric) return true;
+      const itemValue = metric.getValue(item);
+      const compareValue = Number(filter.value);
+      if (itemValue == null || Number.isNaN(compareValue)) return false;
+      if (filter.operator === 'gt') return itemValue > compareValue;
+      if (filter.operator === 'gte') return itemValue >= compareValue;
+      if (filter.operator === 'lt') return itemValue < compareValue;
+      if (filter.operator === 'lte') return itemValue <= compareValue;
+      if (filter.operator === 'eq') return itemValue === compareValue;
       return true;
     }
 
@@ -181,46 +195,12 @@
       const query = document.getElementById('search-input').value.trim().toLowerCase();
       const sector = document.getElementById('sector-select').value;
       const sort = document.getElementById('sort-select').value;
-      const marketCapBand = document.getElementById('market-cap-select').value;
-      const revenueScaleBand = document.getElementById('revenue-scale-select').value;
-      const revenueGrowthBand = document.getElementById('revenue-growth-select').value;
-      const psBand = document.getElementById('ps-band-select').value;
-      const normalizedPeBand = document.getElementById('normalized-pe-band-select').value;
 
       const companies = sortCompanies([...state.summary.companies].filter((item) => {
         const haystack = [item.ticker, ...(item.aliases || []), item.name, item.security, item.sector, item.subIndustry].join(' ').toLowerCase();
         return haystack.includes(query)
           && (!sector || item.sector === sector)
-          && matchesNumericBand(item.marketData?.marketCap, marketCapBand, {
-            mega: { min: 200_000_000_000, max: null },
-            large: { min: 10_000_000_000, max: 200_000_000_000 },
-            mid: { min: 2_000_000_000, max: 10_000_000_000 },
-            small: { min: 0, max: 2_000_000_000 },
-          })
-          && matchesNumericBand(item.latestAnnual?.revenue, revenueScaleBand, {
-            mega: { min: 100_000_000_000, max: null },
-            large: { min: 20_000_000_000, max: 100_000_000_000 },
-            mid: { min: 5_000_000_000, max: 20_000_000_000 },
-            small: { min: 0, max: 5_000_000_000 },
-          })
-          && matchesNumericBand(item.revenueGrowthPct, revenueGrowthBand, {
-            gt20: { min: 20, max: null },
-            "10to20": { min: 10, max: 20 },
-            "0to10": { min: 0, max: 10 },
-            negative: { min: null, max: 0 },
-          })
-          && matchesNumericBand(item.psRatio, psBand, {
-            lt1: { min: 0, max: 1 },
-            "1to3": { min: 1, max: 3 },
-            "3to8": { min: 3, max: 8 },
-            gt8: { min: 8, max: null },
-          })
-          && matchesNumericBand(item.normalizedPeProxy, normalizedPeBand, {
-            lt10: { min: 0, max: 10 },
-            "10to20": { min: 10, max: 20 },
-            "20to35": { min: 20, max: 35 },
-            gt35: { min: 35, max: null },
-          });
+          && state.customFilters.every((filter) => matchesCustomFilter(item, filter));
       }), sort);
 
       state.filteredCompanies = companies;
@@ -248,11 +228,8 @@
       document.getElementById('search-input').value = '';
       document.getElementById('sector-select').value = '';
       document.getElementById('sort-select').value = 'revenue-desc';
-      document.getElementById('market-cap-select').value = '';
-      document.getElementById('revenue-scale-select').value = '';
-      document.getElementById('revenue-growth-select').value = '';
-      document.getElementById('ps-band-select').value = '';
-      document.getElementById('normalized-pe-band-select').value = '';
+      state.customFilters = Array.from({ length: 3 }, () => ({ metric: '', operator: 'gte', value: '' }));
+      renderCustomFilters();
       applyFilters();
     }
 
@@ -372,15 +349,10 @@
       renderHeroStats(state.summary);
       renderOverview(state.summary);
       buildSectorOptions(state.summary);
-      buildFilterOptions(state.summary);
+      renderCustomFilters();
       document.getElementById('search-input').addEventListener('input', applyFilters);
       document.getElementById('sector-select').addEventListener('change', applyFilters);
       document.getElementById('sort-select').addEventListener('change', applyFilters);
-      document.getElementById('market-cap-select').addEventListener('change', applyFilters);
-      document.getElementById('revenue-scale-select').addEventListener('change', applyFilters);
-      document.getElementById('revenue-growth-select').addEventListener('change', applyFilters);
-      document.getElementById('ps-band-select').addEventListener('change', applyFilters);
-      document.getElementById('normalized-pe-band-select').addEventListener('change', applyFilters);
       document.getElementById('reset-filters').addEventListener('click', resetFilters);
       applyFilters();
 
