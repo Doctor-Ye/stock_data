@@ -2675,6 +2675,7 @@ def stage_universe_checkpoint(settings: dict[str, Any], limit: int | None = None
 
 def recompute_financials(settings: dict[str, Any], ticker: str | None = None, limit: int | None = None) -> None:
     db = Database(Path(settings["sqlitePath"]))
+    recomputed_at = utc_now_iso()
     with db.connect() as conn:
         companies = filter_companies(get_companies_from_db(conn), ticker, limit)
         total = len(companies)
@@ -2688,14 +2689,15 @@ def recompute_financials(settings: dict[str, Any], ticker: str | None = None, li
             conn.commit()
         sync_market_data(conn, settings, companies, force=False)
         export_json_snapshots(conn, settings)
-        build_web_data(settings)
-        set_state(conn, "last_recompute_utc", utc_now_iso())
+        set_state(conn, "last_recompute_utc", recomputed_at)
         conn.commit()
+    build_web_data(settings)
     print_json({"recomputedCompanies": total})
 
 
 def run_market_data_sync(settings: dict[str, Any], ticker: str | None = None, limit: int | None = None, force: bool = False) -> None:
     db = Database(Path(settings["sqlitePath"]))
+    market_sync_at = utc_now_iso()
     with db.connect() as conn:
         companies = get_companies_from_db(conn)
         if not companies:
@@ -2704,9 +2706,9 @@ def run_market_data_sync(settings: dict[str, Any], ticker: str | None = None, li
         companies = filter_companies(companies, ticker, limit)
         refreshed = sync_market_data(conn, settings, companies, force=force)
         export_json_snapshots(conn, settings)
-        build_web_data(settings)
-        set_state(conn, "last_market_sync_utc", utc_now_iso())
+        set_state(conn, "last_market_sync_utc", market_sync_at)
         conn.commit()
+    build_web_data(settings)
     print_json({"marketQuotesRefreshed": refreshed, "companies": len(companies)})
 
 
@@ -2720,6 +2722,7 @@ def rebuild_db_from_cache(settings: dict[str, Any], output_path: str) -> None:
 
     companies = load_companies_snapshot(settings)
     target_db = Database(target_path)
+    rebuild_at = utc_now_iso()
     with target_db.connect() as conn:
         upsert_companies(conn, companies)
         total = len(companies)
@@ -2735,9 +2738,9 @@ def rebuild_db_from_cache(settings: dict[str, Any], output_path: str) -> None:
             conn.commit()
         sync_market_data(conn, settings, companies, force=True)
         export_json_snapshots(conn, {**settings, "sqlitePath": str(target_path)})
-        build_web_data({**settings, "sqlitePath": str(target_path)})
-        set_state(conn, "last_rebuild_utc", utc_now_iso())
+        set_state(conn, "last_rebuild_utc", rebuild_at)
         conn.commit()
+    build_web_data({**settings, "sqlitePath": str(target_path)})
     print_json({"rebuiltDatabase": str(target_path), "companies": len(companies)})
 
 
@@ -2792,6 +2795,7 @@ def run_full_sync(
     refresh_universe: bool = False,
 ) -> None:
     db = Database(Path(settings["sqlitePath"]))
+    full_sync_at = utc_now_iso()
     with db.connect() as conn:
         companies = get_companies_from_db(conn)
         if refresh_universe or not companies:
@@ -2843,7 +2847,6 @@ def run_full_sync(
         else:
             append_log(settings, "Full sync completed without company-level failures")
         sync_market_data(conn, settings, companies, force=True)
-        build_web_data(settings)
         publish_announcement(
             settings,
             conn,
@@ -2851,7 +2854,9 @@ def run_full_sync(
             all_updated_companies,
             all_filings,
         )
+        set_state(conn, "last_full_sync_utc", full_sync_at)
         conn.commit()
+    build_web_data(settings)
 
 
 def run_daily_update(
@@ -2862,6 +2867,7 @@ def run_daily_update(
     resume: bool = False,
 ) -> None:
     db = Database(Path(settings["sqlitePath"]))
+    daily_run_at = utc_now_iso()
     with db.connect() as conn:
         companies = get_companies_from_db(conn)
         if not companies:
@@ -2914,14 +2920,13 @@ def run_daily_update(
                 continue
 
         export_json_snapshots(conn, settings)
-        set_state(conn, "last_daily_run_utc", utc_now_iso())
+        set_state(conn, "last_daily_run_utc", daily_run_at)
         set_state(conn, "last_daily_failed_count", str(len(failed_companies)))
         if failed_companies:
             failed_path = Path(settings["dataRootResolved"]) / "logs" / f"daily-update-failed-{utc_stamp()}.json"
             write_json(failed_path, failed_companies)
             append_log(settings, f"Daily update completed with {len(failed_companies)} failed companies. Details: {failed_path}")
         sync_market_data(conn, settings, companies, force=True)
-        build_web_data(settings)
         publish_announcement(
             settings,
             conn,
@@ -2930,6 +2935,7 @@ def run_daily_update(
             new_filings,
         )
         conn.commit()
+    build_web_data(settings)
 
 
 def refresh_official_guidance(
