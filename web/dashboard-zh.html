@@ -4,17 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>标普500财务看板</title>
-  <link rel="stylesheet" href="./dashboard.css?v=20260323b">
+  <link rel="stylesheet" href="./dashboard.css?v=20260323c">
 </head>
 <body>
   <div class="shell">
     <header class="hero">
-      <div>
+      <div class="hero-main">
         <p class="eyebrow">SP500 x SEC</p>
         <h1>公司财务看板</h1>
-        <p class="hero-copy">基于本地 SEC 财务数据库和上一交易日市场数据，查看标普 500 公司的摘要、排名与详情。</p>
+        <p class="hero-copy">基于 SEC 结构化财务数据和市场快照，先看板块与榜单，再下钻到单家公司经营、估值和申报细节。</p>
+        <div class="hero-badges">
+          <span class="hero-badge">全市场筛选</span>
+          <span class="hero-badge">自定义指标</span>
+          <span class="hero-badge">财报细读</span>
+        </div>
       </div>
-      <div>
+      <div class="hero-side">
         <div class="lang-switch">
           <a class="lang-link" href="./dashboard.html">English</a>
           <a class="lang-link active" href="./dashboard-zh.html">简体中文</a>
@@ -23,18 +28,32 @@
       </div>
     </header>
 
-    <section class="overview">
-      <article class="panel wide">
+    <section class="overview-shell">
+      <div class="section-intro">
+        <div>
+          <p class="section-kicker">市场总览</p>
+          <h2>总览看板</h2>
+        </div>
+        <p class="section-copy">先看行业结构，再看规模、利润、估值、增长和回收率榜单，入口更清晰。</p>
+      </div>
+      <div class="overview">
+      <article class="panel overview-hero">
         <div class="panel-head">
-          <h3>行业概览</h3>
-          <p>按最新年度营收排序</p>
+          <div>
+            <h3>行业概览</h3>
+            <p>按最新年度营收排序</p>
+          </div>
+          <span class="panel-tag">板块结构</span>
         </div>
         <div class="sector-overview" id="sector-overview"></div>
       </article>
       <article class="panel overview-table">
         <div class="panel-head">
-          <h3>营收前30</h3>
-          <p>最新年度营收</p>
+          <div>
+            <h3>营收前30</h3>
+            <p>最新年度营收</p>
+          </div>
+          <span class="panel-tag">规模</span>
         </div>
         <div class="table-wrap">
           <table>
@@ -45,8 +64,11 @@
       </article>
       <article class="panel overview-table">
         <div class="panel-head">
-          <h3>利润前30</h3>
-          <p>最新年度净利润</p>
+          <div>
+            <h3>利润前30</h3>
+            <p>最新年度净利润</p>
+          </div>
+          <span class="panel-tag">盈利</span>
         </div>
         <div class="table-wrap">
           <table>
@@ -57,8 +79,11 @@
       </article>
       <article class="panel overview-table">
         <div class="panel-head">
-          <h3>市销率前30</h3>
-          <p>当前市值 / 最新年度营收，按高到低</p>
+          <div>
+            <h3>市销率前30</h3>
+            <p>当前市值 / 最新年度营收，按高到低</p>
+          </div>
+          <span class="panel-tag">估值</span>
         </div>
         <div class="table-wrap">
           <table>
@@ -69,8 +94,11 @@
       </article>
       <article class="panel overview-table">
         <div class="panel-head">
-          <h3>扣非增速前30</h3>
-          <p>扣非净利润代理同比</p>
+          <div>
+            <h3>扣非增速前30</h3>
+            <p>扣非净利润代理同比</p>
+          </div>
+          <span class="panel-tag">增长</span>
         </div>
         <div class="table-wrap">
           <table>
@@ -81,8 +109,11 @@
       </article>
       <article class="panel overview-table">
         <div class="panel-head">
-          <h3>5年市值回收率前30</h3>
-          <p>未来5年扣非净利润之和 / 当前市值</p>
+          <div>
+            <h3>5年市值回收率前30</h3>
+            <p>未来5年扣非净利润之和 / 当前市值</p>
+          </div>
+          <span class="panel-tag">回收率</span>
         </div>
         <div class="table-wrap">
           <table>
@@ -93,8 +124,11 @@
       </article>
       <article class="panel overview-table">
         <div class="panel-head">
-          <h3>最新30条财报</h3>
-          <p>最近 SEC 更新</p>
+          <div>
+            <h3>最新30条财报</h3>
+            <p>最近 SEC 更新</p>
+          </div>
+          <span class="panel-tag">更新</span>
         </div>
         <div class="table-wrap">
           <table>
@@ -103,65 +137,126 @@
           </table>
         </div>
       </article>
+      </div>
     </section>
 
-    <main class="layout">
-      <section class="sidebar">
-        <div class="toolbar">
-          <input id="search-input" type="search" placeholder="搜索代码、公司、行业">
-          <select id="sector-select"></select>
-          <select id="sort-select">
-            <option value="revenue-desc">营收降序</option>
-            <option value="netIncome-desc">净利润降序</option>
-            <option value="marketCap-desc">市值降序</option>
-            <option value="ps-asc">市销率升序</option>
-            <option value="operatingProfit-desc">营业利润降序</option>
-            <option value="feeAdjustedNetIncome-desc">扣费净利润降序</option>
-            <option value="normalizedGrowth-desc">扣非净利润增速降序</option>
-            <option value="normalizedPe-asc">扣非净利润市盈率升序</option>
-            <option value="marketCapPayback-desc">5年市值回收率降序</option>
-            <option value="ticker-asc">代码升序</option>
-            <option value="filing-desc">最新财报</option>
-          </select>
+    <main class="workspace">
+      <section class="control-rail">
+        <div class="section-intro section-intro-compact">
+          <div>
+            <p class="section-kicker">工作区</p>
+            <h2>筛选与选股</h2>
+          </div>
+          <p class="section-copy">先缩小范围，再进入单家公司详情，阅读增长、盈利、估值和申报记录。</p>
         </div>
-        <div class="filter-grid" id="custom-filter-grid"></div>
-        <div class="toolbar-actions">
-          <button id="reset-filters" type="button">清空筛选</button>
+        <div class="sidebar panel">
+          <div class="control-block">
+            <div class="panel-head panel-head-stack">
+              <div>
+                <h3>搜索与排序</h3>
+                <p>先用搜索、行业和排序确定一个观察范围。</p>
+              </div>
+            </div>
+            <div class="toolbar">
+              <input id="search-input" type="search" placeholder="搜索代码、公司、行业">
+              <select id="sector-select"></select>
+              <select id="sort-select">
+                <option value="revenue-desc">营收降序</option>
+                <option value="netIncome-desc">净利润降序</option>
+                <option value="marketCap-desc">市值降序</option>
+                <option value="ps-asc">市销率升序</option>
+                <option value="operatingProfit-desc">营业利润降序</option>
+                <option value="feeAdjustedNetIncome-desc">扣费净利润降序</option>
+                <option value="normalizedGrowth-desc">扣非净利润增速降序</option>
+                <option value="normalizedPe-asc">扣非净利润市盈率升序</option>
+                <option value="marketCapPayback-desc">5年市值回收率降序</option>
+                <option value="ticker-asc">代码升序</option>
+                <option value="filing-desc">最新财报</option>
+              </select>
+            </div>
+          </div>
+          <div class="control-block control-block-muted">
+            <div class="panel-head panel-head-stack">
+              <div>
+                <h3>自定义筛选</h3>
+                <p>按指标、大小关系和目标值组合出自己的筛选条件。</p>
+              </div>
+            </div>
+            <div class="filter-grid" id="custom-filter-grid"></div>
+            <div class="toolbar-actions">
+              <button id="reset-filters" type="button">清空筛选</button>
+            </div>
+          </div>
+          <div class="control-block">
+            <div class="list-meta" id="list-meta"></div>
+            <div class="company-list" id="company-list"></div>
+          </div>
         </div>
-        <div class="list-meta" id="list-meta"></div>
-        <div class="company-list" id="company-list"></div>
       </section>
 
-      <section class="detail">
+      <section class="detail-pane">
+        <div class="section-intro section-intro-compact">
+          <div>
+            <p class="section-kicker">公司详情</p>
+            <h2>阅读经营结构</h2>
+          </div>
+          <p class="section-copy">查看最新指标、趋势图、自动解读和原始财务表，阅读路径更顺。</p>
+        </div>
+        <section class="detail">
         <div class="detail-empty" id="detail-empty">
           <h2>请选择一家公司</h2>
           <p>点击左侧公司列表或上方排行榜即可查看详情。</p>
         </div>
         <div class="detail-content hidden" id="detail-content">
           <div class="company-head" id="company-head"></div>
-          <div class="metrics-grid" id="metrics-grid"></div>
-          <div class="chart-grid">
+          <section class="detail-section">
+            <div class="section-bar">
+              <div>
+                <h3>核心指标</h3>
+                <p>先看估值、盈利、增长和预测相关的关键数值。</p>
+              </div>
+            </div>
+            <div class="metrics-grid" id="metrics-grid"></div>
+          </section>
+          <section class="detail-section">
+            <div class="section-bar">
+              <div>
+                <h3>趋势图</h3>
+                <p>同时查看年度、季度和扣非利润代理的变化。</p>
+              </div>
+            </div>
+            <div class="chart-grid">
             <article class="panel">
-              <div class="panel-head"><h3>年度营收</h3><p>近 10 个财年</p></div>
+              <div class="panel-head"><div><h3>年度营收</h3><p>近 10 个财年</p></div></div>
               <div id="annual-revenue-chart"></div>
             </article>
             <article class="panel">
-              <div class="panel-head"><h3>季度营收</h3><p>近 12 个季度</p></div>
+              <div class="panel-head"><div><h3>季度营收</h3><p>近 12 个季度</p></div></div>
               <div id="quarterly-revenue-chart"></div>
             </article>
             <article class="panel chart-span">
-              <div class="panel-head"><h3>扣非净利润代理</h3><p>近 3 个财年</p></div>
+              <div class="panel-head"><div><h3>扣非净利润代理</h3><p>近 3 个财年</p></div></div>
               <div id="annual-core-profit-chart"></div>
             </article>
-          </div>
-          <article class="panel">
-            <div class="panel-head"><h3>财报解读</h3><p>自动生成的近 3 年解读</p></div>
+            </div>
+          </section>
+          <section class="detail-section">
+          <article class="panel panel-emphasis">
+            <div class="panel-head"><div><h3>财报解读</h3><p>自动生成的近 3 年解读</p></div></div>
             <ul id="interpretation-list"></ul>
             <ul id="methodology-list"></ul>
           </article>
+          </section>
+          <section class="detail-section">
+            <div class="section-bar">
+              <div>
+                <h3>结构化表格</h3>
+                <p>回到原始财务行和最近申报，方便交叉核对。</p>
+              </div>
+            </div>
           <div class="tables tables-three">
             <article class="panel">
-              <div class="panel-head"><h3>年度财务</h3></div>
+              <div class="panel-head"><div><h3>年度财务</h3></div></div>
               <div class="table-wrap">
                 <table>
                   <thead><tr><th>财年</th><th>营收</th><th>营业利润</th><th>净利润</th><th>股权激励</th><th>特殊项目</th></tr></thead>
@@ -170,7 +265,7 @@
               </div>
             </article>
             <article class="panel">
-              <div class="panel-head"><h3>三年分析</h3></div>
+              <div class="panel-head"><div><h3>三年分析</h3></div></div>
               <div class="table-wrap">
                 <table>
                   <thead><tr><th>财年</th><th>PS</th><th>营业利润</th><th>扣费净利润</th><th>扣非净利润</th><th>营业利润率</th></tr></thead>
@@ -179,7 +274,7 @@
               </div>
             </article>
             <article class="panel">
-              <div class="panel-head"><h3>最近财报</h3></div>
+              <div class="panel-head"><div><h3>最近财报</h3></div></div>
               <div class="table-wrap">
                 <table>
                   <thead><tr><th>日期</th><th>表单</th><th>Accession</th></tr></thead>
@@ -188,11 +283,13 @@
               </div>
             </article>
           </div>
+          </section>
         </div>
+        </section>
       </section>
     </main>
   </div>
-  <script src="./dashboard-core.js?v=20260323b"></script>
-  <script src="./dashboard-zh.js?v=20260323b"></script>
+  <script src="./dashboard-core.js?v=20260323c"></script>
+  <script src="./dashboard-zh.js?v=20260323c"></script>
 </body>
 </html>
