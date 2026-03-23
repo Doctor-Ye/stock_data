@@ -106,6 +106,9 @@
       renderRows('top-normalized-growth-body', summary.highlights.topNormalizedGrowth || [], (item) => (
         `<td>${item.ticker}</td><td>${item.security || item.name}</td><td>${fmtPercent(item.normalizedNetIncomeGrowthPct)}</td>`
       ));
+      renderRows('top-market-cap-payback-body', summary.highlights.topMarketCapPayback || [], (item) => (
+        `<td>${item.ticker}</td><td>${item.security || item.name}</td><td>${fmtPercent(item.fiveYearMarketCapPaybackPct)}</td>`
+      ));
       renderRows('latest-filings-body', summary.highlights.latestFilings || [], (item) => (
         `<td>${fmtDate(item.latestFiling?.filing_date)}</td><td>${item.ticker}</td><td>${item.latestFiling?.form || '--'}</td>`
       ));
