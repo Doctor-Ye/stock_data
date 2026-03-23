@@ -148,7 +148,7 @@ http://127.0.0.1:8080/dashboard.html
 - Python 版本使用标准库和 SQLite，不额外依赖第三方包。
 ## Universe Rules
 
-- Default universe = S&P 500 + US-listed equities above `universeMinMarketCapUsd` + ADRs above `universeMinMarketCapUsd` + `config/additional_companies.json` manual overrides.
+- Default universe = S&P 500 + US-listed equities above `universeMinMarketCapUsd` + all ADRs + `config/additional_companies.json` manual overrides.
 - Large-cap screening uses latest SEC share count multiplied by the latest market quote.
 - ADR support includes annual forms `20-F`, `20-F/A`, `40-F`, and `40-F/A`.
 - Partial sync is supported via `--limit`, and checkpoint resume is supported via `--resume`, which continues after `sync_state.last_processed_ticker`.

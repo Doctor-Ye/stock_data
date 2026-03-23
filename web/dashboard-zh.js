@@ -45,6 +45,8 @@
     psRatio: '市销率',
     operatingProfit: '营业利润',
     feeAdjustedNetIncome: '扣费净利润',
+    revenueGrowth: '营收同比增速',
+    revenueGrowthGeomean: '3年营收几何增速',
     normalizedNetIncome: '扣非净利润',
     normalizedGrowth: '扣非净利润增速',
     normalizedGrowthGeomean: '3年扣非净利润几何增速',
@@ -67,7 +69,7 @@
     operatingMargin: (value) => value == null ? '缺少营业利润率口径' : `营业利润率 ${value}%`,
     proxyMetric: '基于 SEC 结构化科目生成的代理口径',
     marketCapPaybackFootnote: '未来5年扣非净利润预测总和 / 当前市值',
-    marketCapPaybackProjectionFootnote: '作为未来5年扣非净利润投射的增长假设',
+    marketCapPaybackProjectionFootnote: '作为未来5年扣非净利润投射的营收增长假设',
     forecastBasis: (year, sourceType, sourceName) => {
       if (!year && !sourceType && !sourceName) return '暂无预测口径';
       const parts = [];

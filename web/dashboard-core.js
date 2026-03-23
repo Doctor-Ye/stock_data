@@ -288,6 +288,8 @@
         metricCard(config.text.psRatio, fmtRatio(company.psRatio), config.text.fiscalYear(latestAnnual.fiscal_year)),
         metricCard(config.text.operatingProfit, fmtCurrencyCompact(company.operatingProfit), config.text.operatingMargin(analysis.latestOperatingMarginPct)),
         metricCard(config.text.feeAdjustedNetIncome, fmtCurrencyCompact(company.feeAdjustedNetIncome), config.text.proxyMetric),
+        metricCard(config.text.revenueGrowth, fmtPercent(company.revenueGrowthPct), config.text.fiscalYear(latestAnnual.fiscal_year)),
+        metricCard(config.text.revenueGrowthGeomean, fmtPercent(company.revenueGrowthGeomeanPct), config.text.marketCapPaybackProjectionFootnote),
         metricCard(config.text.normalizedGrowth, fmtPercent(company.normalizedNetIncomeGrowthPct), config.text.proxyMetric),
         metricCard(config.text.normalizedGrowthGeomean, fmtPercent(company.normalizedNetIncomeGrowthGeomeanPct), config.text.proxyMetric),
         metricCard(config.text.normalizedProjectionGrowth, fmtPercent(company.normalizedNetIncomeProjectionGrowthPct), config.text.marketCapPaybackProjectionFootnote),

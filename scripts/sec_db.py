@@ -497,6 +497,21 @@ def estimate_market_cap(
     return float(quote["close"]) * float(shares)
 
 
+def universe_priority_bucket(market_cap: float | None, is_adr: bool) -> int:
+    if market_cap is not None:
+        if market_cap > 50_000_000_000:
+            return 0
+        if market_cap > 20_000_000_000:
+            return 1
+        if market_cap > 15_000_000_000:
+            return 2
+        if market_cap > 10_000_000_000:
+            return 3
+    if is_adr:
+        return 4
+    return 5
+
+
 def universe_checkpoint_path(settings: dict[str, Any]) -> Path:
     return Path(settings["dataRootResolved"]) / "db" / "universe_screen_checkpoint.json"
 
@@ -531,8 +546,16 @@ def save_universe_checkpoint(settings: dict[str, Any], total: int, accepted: lis
 
 def load_staged_universe_from_checkpoint(settings: dict[str, Any]) -> list[dict[str, Any]]:
     checkpoint = load_universe_checkpoint(settings, force=False)
+    accepted = sorted(
+        checkpoint["accepted"],
+        key=lambda item: (
+            universe_priority_bucket(item.get("screenedMarketCap"), bool(item.get("isAdr"))),
+            -(item.get("screenedMarketCap") or 0),
+            item["ticker"],
+        ),
+    )
     companies: list[dict[str, Any]] = []
-    for row in checkpoint["accepted"]:
+    for row in accepted:
         companies.append(
             build_company_seed(
                 ticker=row["ticker"],
@@ -603,10 +626,18 @@ def get_expanded_universe_candidates(settings: dict[str, Any], force: bool = Fal
             save_universe_checkpoint(settings, total, rows, ticker, False)
             continue
 
-        if market_cap is not None and market_cap >= min_market_cap:
+        if bool(listing.get("isAdr")) or (market_cap is not None and market_cap > min_market_cap):
+            company["screenedMarketCap"] = market_cap
             rows.append(company)
         save_universe_checkpoint(settings, total, rows, ticker, False)
 
+    rows.sort(
+        key=lambda item: (
+            universe_priority_bucket(item.get("screenedMarketCap"), bool(item.get("isAdr"))),
+            -(item.get("screenedMarketCap") or 0),
+            item["ticker"],
+        )
+    )
     save_universe_checkpoint(settings, total, rows, listings[-1]["ticker"] if listings else None, True)
     return rows
 
@@ -2311,6 +2342,8 @@ def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, A
     if normalized_growth is not None:
         trend = "improving" if normalized_growth >= 0 else "declining"
         lines.append(f"Normalized net income proxy growth is {normalized_growth}% YoY, trend {trend}.")
+    if revenue_growth_geomean is not None:
+        lines.append(f"3Y geometric revenue growth is {revenue_growth_geomean}%.")
     if normalized_pe is not None:
         lines.append(f"Normalized P/E proxy is {normalized_pe}x based on current market cap.")
     if five_year_market_cap_payback is not None:
@@ -2533,6 +2566,8 @@ def build_web_data(settings: dict[str, Any]) -> None:
             "feeAdjustedNetIncome": analysis["latestFeeAdjustedNetIncome"],
             "normalizedNetIncomeGrowthPct": analysis["normalizedNetIncomeGrowthPct"],
             "normalizedNetIncomeGrowthGeomeanPct": analysis["normalizedNetIncomeGrowthGeomeanPct"],
+            "revenueGrowthGeomeanPct": analysis["revenueGrowthGeomeanPct"],
+            "normalizedNetIncomeProjectionGrowthPct": analysis["normalizedNetIncomeProjectionGrowthPct"],
             "normalizedPeProxy": analysis["normalizedPeProxy"],
             "projectedFiveYearNormalizedNetIncome": analysis["projectedFiveYearNormalizedNetIncome"],
             "fiveYearMarketCapPaybackPct": analysis["fiveYearMarketCapPaybackPct"],

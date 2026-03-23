@@ -6,14 +6,14 @@
     ],
     "cik": "0000316709",
     "name": "SCHWAB CHARLES CORP",
-    "security": "Charles Schwab Corporation (The) Common Stock",
+    "security": "Charles Schwab Corporation",
     "sector": "Financials",
     "subIndustry": "Investment Banking & Brokerage",
     "headquarters": "Westlake, Texas",
     "dateAdded": "1997-06-02",
-    "listingExchange": "NYSE",
+    "listingExchange": null,
     "isAdr": false,
-    "universeSource": "market-cap,sp500",
+    "universeSource": null,
     "latestAnnual": {
       "cik": "0000316709",
       "ticker": "SCHW",
@@ -33,14 +33,8 @@
       "shares_outstanding": 1752210425.0,
       "source_filed_date": "2026-02-25",
       "source_form": "10-K",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 317000000.0,
-      "special_items": 0.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 0.0
     },
     "latestQuarter": {
       "cik": "0000316709",
@@ -63,14 +57,8 @@
       "shares_outstanding": 1776936770.0,
       "source_filed_date": "2025-11-07",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     "latestFiling": {
       "accession_number": "0000316709-26-000009",
@@ -85,17 +73,17 @@
       "description": "10-K"
     },
     "marketData": {
-      "price": 93.63,
-      "previousClose": 93.63,
-      "priceDate": "2026-03-16",
-      "priceTime": "21:00:17",
-      "open": 94.28,
-      "high": 95.24,
-      "low": 93.26,
-      "volume": 8835700.0,
-      "marketCap": 166374589775.1,
-      "peRatio": 20.14,
-      "pbRatio": 3.37,
+      "price": 93.93,
+      "previousClose": 93.93,
+      "priceDate": "2026-03-17",
+      "priceTime": "21:00:18",
+      "open": 94.35,
+      "high": 95.39,
+      "low": 93.77,
+      "volume": 5972074.0,
+      "marketCap": 166907670806.1,
+      "peRatio": 20.2,
+      "pbRatio": 3.38,
       "sharesOutstanding": 1776936770.0,
       "shareholdersEquity": 49384000000.0,
       "dilutedEps": 4.65,
@@ -103,7 +91,7 @@
       "equitySourceForm": "10-Q",
       "earningsFiscalYear": 2025,
       "source": "stooq",
-      "fetchedAtUtc": "2026-03-17T01:35:44Z"
+      "fetchedAtUtc": "2026-03-18T03:12:49Z"
     },
     "analysis": {
       "years": [
@@ -126,15 +114,9 @@
           "shares_outstanding": null,
           "source_filed_date": "2024-02-23",
           "source_form": "10-K",
-          "dividends_paid": null,
-          "share_repurchases": null,
           "share_based_compensation_expense": 320000000.0,
           "special_items": 0.0,
-          "pretax_income": null,
-          "income_tax_expense": null,
-          "non_recurring_charge_items": null,
-          "non_recurring_gain_items": null,
-          "psRatio": 8.83,
+          "psRatio": 8.86,
           "operatingMarginPct": null,
           "feeAdjustedNetIncome": 4747000000.0,
           "normalizedNetIncomeProxy": 4747000000.0
@@ -158,15 +140,9 @@
           "shares_outstanding": 1813567665.0,
           "source_filed_date": "2025-02-26",
           "source_form": "10-K",
-          "dividends_paid": null,
-          "share_repurchases": null,
           "share_based_compensation_expense": 337000000.0,
           "special_items": 0.0,
-          "pretax_income": null,
-          "income_tax_expense": null,
-          "non_recurring_charge_items": null,
-          "non_recurring_gain_items": null,
-          "psRatio": 8.49,
+          "psRatio": 8.51,
           "operatingMarginPct": null,
           "feeAdjustedNetIncome": 5605000000.0,
           "normalizedNetIncomeProxy": 5605000000.0
@@ -190,21 +166,15 @@
           "shares_outstanding": 1752210425.0,
           "source_filed_date": "2026-02-25",
           "source_form": "10-K",
-          "dividends_paid": null,
-          "share_repurchases": null,
           "share_based_compensation_expense": 317000000.0,
           "special_items": 0.0,
-          "pretax_income": null,
-          "income_tax_expense": null,
-          "non_recurring_charge_items": null,
-          "non_recurring_gain_items": null,
-          "psRatio": 6.96,
+          "psRatio": 6.98,
           "operatingMarginPct": null,
           "feeAdjustedNetIncome": 8535000000.0,
           "normalizedNetIncomeProxy": 8535000000.0
         }
       ],
-      "latestPsRatio": 6.96,
+      "latestPsRatio": 6.98,
       "latestOperatingProfit": null,
       "latestOperatingMarginPct": null,
       "latestFeeAdjustedNetIncome": 8535000000.0,
@@ -213,14 +183,15 @@
       "normalizedNetIncomeGrowthGeomeanPct": 34.09,
       "revenueGrowthGeomeanPct": 12.69,
       "normalizedNetIncomeProjectionGrowthPct": 12.69,
-      "normalizedPeProxy": 19.49,
+      "normalizedPeProxy": 19.56,
       "projectedFiveYearNormalizedNetIncome": 61945444945.24,
-      "fiveYearMarketCapPaybackPct": 37.23,
+      "fiveYearMarketCapPaybackPct": 37.11,
       "commentary": [
-        "FY 2025: PS 6.96x, operating profit --B, normalized NI proxy 8.54B.",
+        "FY 2025: PS 6.98x, operating profit --B, normalized NI proxy 8.54B.",
         "Normalized net income proxy growth is 52.27% YoY, trend improving.",
-        "Normalized P/E proxy is 19.49x based on current market cap.",
-        "5Y market-cap payback ratio is 37.23% using 3Y geometric revenue growth."
+        "3Y geometric revenue growth is 12.69%.",
+        "Normalized P/E proxy is 19.56x based on current market cap.",
+        "5Y market-cap payback ratio is 37.11% using 3Y geometric revenue growth."
       ],
       "methodology": [
         "Fee-adjusted net income proxy = net income - stock-based compensation expense.",
@@ -234,23 +205,25 @@
     "freeCashFlowBillions": 8.76,
     "revenueGrowthPct": 22.01,
     "netIncomeGrowthPct": 48.97,
-    "marketCapBillions": 166.37,
-    "psRatio": 6.96,
+    "marketCapBillions": 166.91,
+    "psRatio": 6.98,
     "operatingProfit": null,
     "feeAdjustedNetIncome": 8535000000.0,
     "normalizedNetIncomeGrowthPct": 52.27,
     "normalizedNetIncomeGrowthGeomeanPct": 34.09,
-    "normalizedPeProxy": 19.49,
+    "revenueGrowthGeomeanPct": 12.69,
+    "normalizedNetIncomeProjectionGrowthPct": 12.69,
+    "normalizedPeProxy": 19.56,
     "projectedFiveYearNormalizedNetIncome": 61945444945.24,
-    "fiveYearMarketCapPaybackPct": 37.23,
+    "fiveYearMarketCapPaybackPct": 37.11,
     "forecastNetIncome": null,
     "forecastNetIncomeFiscalYear": null,
     "forecastSourceType": null,
     "forecastSourceName": null,
-    "forecastRevenue": null,
-    "forecastRevenueFiscalYear": null,
-    "forecastRevenueSourceType": null,
-    "forecastRevenueSourceName": null,
+    "forecastRevenue": 2600000000.0,
+    "forecastRevenueFiscalYear": 2026,
+    "forecastRevenueSourceType": "official-guidance",
+    "forecastRevenueSourceName": "10-K 2026-02-25",
     "forwardPeRatio": null
   },
   "annuals": [
@@ -273,14 +246,8 @@
       "shares_outstanding": 1346473499.0,
       "source_filed_date": "2018-02-22",
       "source_form": "10-K",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 153000000.0,
-      "special_items": 0.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 0.0
     },
     {
       "cik": "0000316709",
@@ -301,14 +268,8 @@
       "shares_outstanding": 1332893531.0,
       "source_filed_date": "2019-02-22",
       "source_form": "10-K",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 197000000.0,
-      "special_items": 0.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 0.0
     },
     {
       "cik": "0000316709",
@@ -329,14 +290,8 @@
       "shares_outstanding": 1286215799.0,
       "source_filed_date": "2020-02-26",
       "source_form": "10-K",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 183000000.0,
-      "special_items": 0.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 0.0
     },
     {
       "cik": "0000316709",
@@ -357,14 +312,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2021-02-24",
       "source_form": "10-K",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 204000000.0,
-      "special_items": 176000000.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 176000000.0
     },
     {
       "cik": "0000316709",
@@ -385,14 +334,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2022-02-24",
       "source_form": "10-K",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 254000000.0,
-      "special_items": 83000000.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 83000000.0
     },
     {
       "cik": "0000316709",
@@ -413,14 +356,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2023-02-24",
       "source_form": "10-K",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 366000000.0,
-      "special_items": 0.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 0.0
     },
     {
       "cik": "0000316709",
@@ -441,14 +378,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2024-02-23",
       "source_form": "10-K",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 320000000.0,
-      "special_items": 0.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 0.0
     },
     {
       "cik": "0000316709",
@@ -469,14 +400,8 @@
       "shares_outstanding": 1813567665.0,
       "source_filed_date": "2025-02-26",
       "source_form": "10-K",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 337000000.0,
-      "special_items": 0.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 0.0
     },
     {
       "cik": "0000316709",
@@ -497,14 +422,8 @@
       "shares_outstanding": 1752210425.0,
       "source_filed_date": "2026-02-25",
       "source_form": "10-K",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 317000000.0,
-      "special_items": 0.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 0.0
     }
   ],
   "quarterlies": [
@@ -529,14 +448,8 @@
       "shares_outstanding": 1337132864.0,
       "source_filed_date": "2017-05-08",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 52000000.0,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -559,14 +472,8 @@
       "shares_outstanding": 1339119476.0,
       "source_filed_date": "2017-08-07",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -589,14 +496,8 @@
       "shares_outstanding": 1340576376.0,
       "source_filed_date": "2017-11-07",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -619,14 +520,8 @@
       "shares_outstanding": 1349185040.0,
       "source_filed_date": "2018-05-09",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 50000000.0,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -649,14 +544,8 @@
       "shares_outstanding": 1351062783.0,
       "source_filed_date": "2018-08-08",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -679,14 +568,8 @@
       "shares_outstanding": 1350452801.0,
       "source_filed_date": "2018-11-07",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -709,14 +592,8 @@
       "shares_outstanding": 1335009396.0,
       "source_filed_date": "2019-05-08",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 56000000.0,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -739,14 +616,8 @@
       "shares_outstanding": 1307183112.0,
       "source_filed_date": "2019-08-07",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -769,14 +640,8 @@
       "shares_outstanding": 1282287840.0,
       "source_filed_date": "2019-11-07",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -799,14 +664,8 @@
       "shares_outstanding": 1287412923.0,
       "source_filed_date": "2020-05-08",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 56000000.0,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -829,14 +688,8 @@
       "shares_outstanding": 1288641882.0,
       "source_filed_date": "2020-08-07",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -859,14 +712,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2020-11-09",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -889,14 +736,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2021-05-07",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 100000000.0,
-      "special_items": 28000000.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 28000000.0
     },
     {
       "cik": "0000316709",
@@ -919,14 +760,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2021-08-06",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": 44000000.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 44000000.0
     },
     {
       "cik": "0000316709",
@@ -949,14 +784,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2021-11-08",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": 7000000.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 7000000.0
     },
     {
       "cik": "0000316709",
@@ -979,14 +808,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2022-05-09",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 144000000.0,
-      "special_items": 10000000.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 10000000.0
     },
     {
       "cik": "0000316709",
@@ -1009,14 +832,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2022-08-08",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -1039,14 +856,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2022-11-08",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -1069,14 +880,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2023-05-08",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 134000000.0,
-      "special_items": 10000000.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 10000000.0
     },
     {
       "cik": "0000316709",
@@ -1099,14 +904,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2023-08-08",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": 30000000.0,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": 30000000.0
     },
     {
       "cik": "0000316709",
@@ -1129,14 +928,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2023-11-08",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -1159,14 +952,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2024-05-09",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 131000000.0,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -1189,14 +976,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2024-08-08",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -1219,14 +1000,8 @@
       "shares_outstanding": null,
       "source_filed_date": "2024-11-08",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -1249,14 +1024,8 @@
       "shares_outstanding": 1816970383.0,
       "source_filed_date": "2025-05-09",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": 126000000.0,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -1279,14 +1048,8 @@
       "shares_outstanding": 1815219300.0,
       "source_filed_date": "2025-08-08",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     },
     {
       "cik": "0000316709",
@@ -1309,14 +1072,8 @@
       "shares_outstanding": 1776936770.0,
       "source_filed_date": "2025-11-07",
       "source_form": "10-Q",
-      "dividends_paid": null,
-      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": null,
-      "pretax_income": null,
-      "income_tax_expense": null,
-      "non_recurring_charge_items": null,
-      "non_recurring_gain_items": null
+      "special_items": null
     }
   ],
   "filings": [
