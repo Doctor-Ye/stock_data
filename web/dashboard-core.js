@@ -75,21 +75,6 @@
     }
 
     function renderOverview(summary) {
-      document.getElementById('sector-overview').innerHTML = summary.sectors.slice(0, 8).map((sector) => `
-        <button class="sector-chip" data-sector="${sector.sector}">
-          <strong>${sector.sector}</strong>
-          <span>${config.text.sectorCompanies(sector.companyCount)}</span>
-          <span>${fmtCurrencyCompact(sector.totalRevenue)}</span>
-        </button>
-      `).join('');
-
-      document.querySelectorAll('.sector-chip').forEach((button) => {
-        button.addEventListener('click', () => {
-          document.getElementById('sector-select').value = button.dataset.sector;
-          applyFilters();
-        });
-      });
-
       const renderRows = (id, rows, cells) => {
         document.getElementById(id).innerHTML = rows.map((item) => `<tr data-ticker="${item.ticker}">${cells(item)}</tr>`).join('');
       };

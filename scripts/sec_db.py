@@ -2623,41 +2623,43 @@ def build_web_data(settings: dict[str, Any]) -> None:
         reverse=True,
     )
 
-    top_revenue = sorted(summaries, key=lambda item: item["latestAnnual"]["revenue"] if item.get("latestAnnual") and item["latestAnnual"].get("revenue") is not None else 0, reverse=True)[:30]
+    highlight_limit = 100
+
+    top_revenue = sorted(summaries, key=lambda item: item["latestAnnual"]["revenue"] if item.get("latestAnnual") and item["latestAnnual"].get("revenue") is not None else 0, reverse=True)[:highlight_limit]
     top_profit = sorted(
         [item for item in summaries if item.get("latestAnnual") and item["latestAnnual"].get("net_income") is not None],
         key=lambda item: item["latestAnnual"]["net_income"],
         reverse=True,
-    )[:30]
+    )[:highlight_limit]
     top_ps = sorted(
         [item for item in summaries if item.get("psRatio") is not None],
         key=lambda item: item["psRatio"],
         reverse=True,
-    )[:30]
+    )[:highlight_limit]
     top_normalized_growth = sorted(
         [item for item in summaries if item.get("normalizedNetIncomeGrowthPct") is not None],
         key=lambda item: item["normalizedNetIncomeGrowthPct"],
         reverse=True,
-    )[:30]
+    )[:highlight_limit]
     top_market_cap_payback = sorted(
         [item for item in summaries if item.get("fiveYearMarketCapPaybackPct") is not None],
         key=lambda item: item["fiveYearMarketCapPaybackPct"],
         reverse=True,
-    )[:30]
+    )[:highlight_limit]
     top_market_cap = sorted(
         [item for item in summaries if item.get("marketData") and item["marketData"].get("marketCap") is not None],
         key=lambda item: item["marketData"]["marketCap"],
         reverse=True,
-    )[:30]
+    )[:highlight_limit]
     top_forward_pe = sorted(
         [item for item in summaries if item.get("forwardPeRatio") is not None],
         key=lambda item: item["forwardPeRatio"],
-    )[:30]
+    )[:highlight_limit]
     latest_filings = sorted(
         [item for item in summaries if item.get("latestFiling") and item["latestFiling"].get("filing_date")],
         key=lambda item: item["latestFiling"]["filing_date"],
         reverse=True,
-    )[:12]
+    )[:highlight_limit]
 
     payload = {
         "generatedAtUtc": utc_now_iso(),
