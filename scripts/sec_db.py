@@ -576,6 +576,24 @@ def load_staged_universe_from_checkpoint(settings: dict[str, Any]) -> list[dict[
     return companies
 
 
+def persist_staged_universe_checkpoint(
+    settings: dict[str, Any],
+    companies: list[dict[str, Any]],
+    *,
+    build_web: bool = False,
+) -> None:
+    if not companies:
+        return
+    db = Database(Path(settings["sqlitePath"]))
+    with db.connect() as conn:
+        upsert_companies(conn, companies)
+        set_state(conn, "last_universe_stage_utc", utc_now_iso())
+        export_json_snapshots(conn, settings)
+        conn.commit()
+    if build_web:
+        build_web_data(settings)
+
+
 def get_expanded_universe_candidates(settings: dict[str, Any], force: bool = False) -> list[dict[str, Any]]:
     ticker_map = {item["ticker"]: item for item in get_sec_ticker_map(settings)}
     cached_quotes = load_market_quotes_snapshot(settings)
@@ -2684,6 +2702,15 @@ def build_web_data(settings: dict[str, Any]) -> None:
 
 
 def refresh_companies(settings: dict[str, Any]) -> None:
+    checkpoint = load_universe_checkpoint(settings, force=False)
+    staged_companies = load_staged_universe_from_checkpoint(settings)
+    if staged_companies and not checkpoint["completed"]:
+        append_log(
+            settings,
+            f"Publishing staged universe progress before resume: {len(staged_companies)} companies accepted through {checkpoint['lastTicker'] or '--'}",
+        )
+        persist_staged_universe_checkpoint(settings, staged_companies, build_web=True)
+
     db = Database(Path(settings["sqlitePath"]))
     companies = resolve_companies(settings)
     with db.connect() as conn:
@@ -2694,22 +2721,15 @@ def refresh_companies(settings: dict[str, Any]) -> None:
         set_state(conn, "last_processed_step", "")
         export_json_snapshots(conn, settings)
         conn.commit()
+    build_web_data(settings)
     print_json({"companiesRefreshed": len(companies), "mode": "universe-only"})
 
 
 def stage_universe_checkpoint(settings: dict[str, Any], limit: int | None = None) -> None:
-    db = Database(Path(settings["sqlitePath"]))
     companies = load_staged_universe_from_checkpoint(settings)
     if limit:
         companies = companies[:limit]
-    with db.connect() as conn:
-        upsert_companies(conn, companies)
-        set_state(conn, "last_universe_stage_utc", utc_now_iso())
-        set_state(conn, "last_processed_ticker", "")
-        set_state(conn, "last_processed_cik", "")
-        set_state(conn, "last_processed_step", "")
-        export_json_snapshots(conn, settings)
-        conn.commit()
+    persist_staged_universe_checkpoint(settings, companies, build_web=True)
     print_json({"companiesStaged": len(companies), "mode": "checkpoint"})
 
 
