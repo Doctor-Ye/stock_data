@@ -489,6 +489,39 @@ th {
   cursor: pointer;
 }
 
+.overview-table .panel-head {
+  align-items: flex-start;
+}
+
+.overview-table table {
+  table-layout: fixed;
+}
+
+.overview-table th,
+.overview-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+.overview-table th:first-child,
+.overview-table td:first-child {
+  width: 74px;
+  white-space: nowrap;
+}
+
+.overview-table th:last-child,
+.overview-table td:last-child {
+  width: 116px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.overview-table th:nth-child(2),
+.overview-table td:nth-child(2) {
+  width: auto;
+}
+
 .overview-table tbody tr:hover {
   background: #f8fafc;
 }
