@@ -23,7 +23,7 @@ from typing import Any, Iterable
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SETTINGS_PATH = PROJECT_ROOT / "config" / "settings.json"
 FALLBACK_SETTINGS_PATH = PROJECT_ROOT / "config" / "settings.example.json"
-UNIVERSE_CHECKPOINT_VERSION = 2
+UNIVERSE_CHECKPOINT_VERSION = 4
 ANNUAL_FORMS = {"10-K", "10-K/A", "10-KT", "20-F", "20-F/A", "40-F", "40-F/A"}
 QUARTERLY_FORMS = {"10-Q", "10-Q/A"}
 GUIDANCE_FORMS = ANNUAL_FORMS | QUARTERLY_FORMS | {"8-K", "8-K/A", "6-K", "6-K/A"}
@@ -361,11 +361,13 @@ def is_adr_security_name(security_name: str | None) -> bool:
 def is_equity_security_name(security_name: str | None) -> bool:
     if not security_name:
         return False
-    if is_adr_security_name(security_name):
-        return True
     if NEGATIVE_EQUITY_NAME_RE.search(security_name):
         return False
-    return bool(POSITIVE_EQUITY_NAME_RE.search(security_name))
+    if is_adr_security_name(security_name):
+        return True
+    if POSITIVE_EQUITY_NAME_RE.search(security_name):
+        return True
+    return True
 
 
 def get_us_listed_equities(settings: dict[str, Any], force: bool = False) -> list[dict[str, Any]]:
@@ -626,7 +628,7 @@ def get_expanded_universe_candidates(settings: dict[str, Any], force: bool = Fal
             save_universe_checkpoint(settings, total, rows, ticker, False)
             continue
 
-        if bool(listing.get("isAdr")) or (market_cap is not None and market_cap > min_market_cap):
+        if market_cap is not None and market_cap > min_market_cap:
             company["screenedMarketCap"] = market_cap
             rows.append(company)
         save_universe_checkpoint(settings, total, rows, ticker, False)
