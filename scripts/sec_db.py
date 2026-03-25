@@ -2654,7 +2654,6 @@ def build_web_data(settings: dict[str, Any]) -> None:
     top_ps = sorted(
         [item for item in summaries if item.get("psRatio") is not None],
         key=lambda item: item["psRatio"],
-        reverse=True,
     )[:highlight_limit]
     top_normalized_growth = sorted(
         [item for item in summaries if item.get("normalizedNetIncomeGrowthPct") is not None],
