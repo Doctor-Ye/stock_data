@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>S&amp;P 500 SEC Dashboard</title>
-  <link rel="stylesheet" href="./dashboard.css?v=20260325c">
+  <link rel="stylesheet" href="./dashboard.css?v=20260325d">
 </head>
 <body>
   <div class="shell">
@@ -79,6 +79,21 @@
           <table>
             <thead><tr><th>Ticker</th><th>Company</th><th>P/S</th></tr></thead>
             <tbody id="top-ps-body"></tbody>
+          </table>
+        </div>
+      </article>
+      <article class="panel overview-table">
+        <div class="panel-head">
+          <div>
+            <h3>Top 100 P/E</h3>
+            <p>Lowest trailing price-to-earnings ratio</p>
+          </div>
+          <span class="panel-tag">Valuation</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ticker</th><th>Company</th><th>P/E</th></tr></thead>
+            <tbody id="top-pe-body"></tbody>
           </table>
         </div>
       </article>
@@ -279,7 +294,7 @@
       </section>
     </main>
   </div>
-  <script src="./dashboard-core.js?v=20260325c"></script>
-  <script src="./dashboard.js?v=20260325c"></script>
+  <script src="./dashboard-core.js?v=20260325d"></script>
+  <script src="./dashboard.js?v=20260325d"></script>
 </body>
 </html>

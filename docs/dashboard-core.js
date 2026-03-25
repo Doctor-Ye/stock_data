@@ -88,6 +88,9 @@
       renderRows('top-ps-body', summary.highlights.topPs || [], (item) => (
         `<td>${item.ticker}</td><td>${item.security || item.name}</td><td>${fmtRatio(item.psRatio)}</td>`
       ));
+      renderRows('top-pe-body', summary.highlights.topPe || [], (item) => (
+        `<td>${item.ticker}</td><td>${item.security || item.name}</td><td>${fmtRatio(item.marketData?.peRatio)}</td>`
+      ));
       renderRows('top-normalized-growth-body', summary.highlights.topNormalizedGrowth || [], (item) => (
         `<td>${item.ticker}</td><td>${item.security || item.name}</td><td>${fmtPercent(item.normalizedNetIncomeGrowthPct)}</td>`
       ));

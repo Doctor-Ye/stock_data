@@ -2655,6 +2655,10 @@ def build_web_data(settings: dict[str, Any]) -> None:
         [item for item in summaries if item.get("psRatio") is not None],
         key=lambda item: item["psRatio"],
     )[:highlight_limit]
+    top_pe = sorted(
+        [item for item in summaries if item.get("marketData") and item["marketData"].get("peRatio") is not None],
+        key=lambda item: item["marketData"]["peRatio"],
+    )[:highlight_limit]
     top_normalized_growth = sorted(
         [item for item in summaries if item.get("normalizedNetIncomeGrowthPct") is not None],
         key=lambda item: item["normalizedNetIncomeGrowthPct"],
@@ -2689,6 +2693,7 @@ def build_web_data(settings: dict[str, Any]) -> None:
             "topRevenue": top_revenue,
             "topProfit": top_profit,
             "topPs": top_ps,
+            "topPe": top_pe,
             "topNormalizedGrowth": top_normalized_growth,
             "topMarketCapPayback": top_market_cap_payback,
             "topMarketCap": top_market_cap,
