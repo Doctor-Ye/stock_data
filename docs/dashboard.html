@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>S&amp;P 500 SEC Dashboard</title>
-  <link rel="stylesheet" href="./dashboard.css?v=20260325a">
+  <link rel="stylesheet" href="./dashboard.css?v=20260325c">
 </head>
 <body>
   <div class="shell">
@@ -70,14 +70,14 @@
       <article class="panel overview-table">
         <div class="panel-head">
           <div>
-            <h3>Top 100 Revenue / Market Cap</h3>
-            <p>Highest latest annual revenue / current market cap</p>
+            <h3>Top 100 Price-to-Sales</h3>
+            <p>Lowest current market cap / latest annual revenue</p>
           </div>
           <span class="panel-tag">Multiple</span>
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Ticker</th><th>Company</th><th>Rev/MCap</th></tr></thead>
+            <thead><tr><th>Ticker</th><th>Company</th><th>P/S</th></tr></thead>
             <tbody id="top-ps-body"></tbody>
           </table>
         </div>
@@ -154,7 +154,7 @@
                 <option value="revenue-desc">Revenue Desc</option>
                 <option value="netIncome-desc">Net Income Desc</option>
                 <option value="marketCap-desc">Market Cap Desc</option>
-                <option value="ps-desc">Revenue / Market Cap Desc</option>
+                <option value="ps-asc">Price / Sales Asc</option>
                 <option value="operatingProfit-desc">Operating Profit Desc</option>
                 <option value="feeAdjustedNetIncome-desc">Fee-Adjusted NI Desc</option>
                 <option value="normalizedGrowth-desc">Normalized NI Growth Desc</option>
@@ -279,7 +279,7 @@
       </section>
     </main>
   </div>
-  <script src="./dashboard-core.js?v=20260325a"></script>
-  <script src="./dashboard.js?v=20260325a"></script>
+  <script src="./dashboard-core.js?v=20260325c"></script>
+  <script src="./dashboard.js?v=20260325c"></script>
 </body>
 </html>

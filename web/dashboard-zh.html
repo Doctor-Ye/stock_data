@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>标普500财务看板</title>
-  <link rel="stylesheet" href="./dashboard.css?v=20260325a">
+  <link rel="stylesheet" href="./dashboard.css?v=20260325c">
 </head>
 <body>
   <div class="shell">
@@ -70,14 +70,14 @@
       <article class="panel overview-table">
         <div class="panel-head">
           <div>
-            <h3>营收/市值前100</h3>
-            <p>最新年度营收 / 当前市值，按高到低</p>
+            <h3>市销率前100</h3>
+            <p>当前市值 / 最新年度营收，按低到高</p>
           </div>
           <span class="panel-tag">估值</span>
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>代码</th><th>公司</th><th>营收/市值</th></tr></thead>
+            <thead><tr><th>代码</th><th>公司</th><th>市销率</th></tr></thead>
             <tbody id="top-ps-body"></tbody>
           </table>
         </div>
@@ -154,7 +154,7 @@
                 <option value="revenue-desc">营收降序</option>
                 <option value="netIncome-desc">净利润降序</option>
                 <option value="marketCap-desc">市值降序</option>
-                <option value="ps-desc">营收/市值降序</option>
+                <option value="ps-asc">市销率升序</option>
                 <option value="operatingProfit-desc">营业利润降序</option>
                 <option value="feeAdjustedNetIncome-desc">扣费净利润降序</option>
                 <option value="normalizedGrowth-desc">扣非净利润增速降序</option>
@@ -279,7 +279,7 @@
       </section>
     </main>
   </div>
-  <script src="./dashboard-core.js?v=20260325a"></script>
-  <script src="./dashboard-zh.js?v=20260325a"></script>
+  <script src="./dashboard-core.js?v=20260325c"></script>
+  <script src="./dashboard-zh.js?v=20260325c"></script>
 </body>
 </html>

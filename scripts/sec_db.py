@@ -2292,14 +2292,6 @@ def valuation_multiple(market_cap: float | None, metric: float | None, digits: i
     return round(float(market_cap) / float(metric), digits)
 
 
-def revenue_to_market_cap_ratio(revenue: float | None, market_cap: float | None, digits: int = 4) -> float | None:
-    if revenue in (None, 0) or market_cap in (None, 0):
-        return None
-    if float(revenue) <= 0 or float(market_cap) <= 0:
-        return None
-    return round(float(revenue) / float(market_cap), digits)
-
-
 def geometric_average_growth(values: list[float | None]) -> float | None:
     valid = [float(value) for value in values if value is not None]
     if len(valid) < 3:
@@ -2342,7 +2334,7 @@ def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, A
     previous = recent_years[-2] if len(recent_years) > 1 else None
     market_cap = market_data.get("marketCap") if market_data else None
 
-    latest_ps = revenue_to_market_cap_ratio(latest.get("revenue") if latest else None, market_cap)
+    latest_ps = valuation_multiple(market_cap, latest.get("revenue") if latest else None, digits=4)
     latest_operating_profit = latest.get("operating_income") if latest else None
     latest_fee_adjusted = adjusted_net_income_after_fee(latest)
     latest_normalized = normalized_net_income_proxy(latest)
@@ -2363,7 +2355,7 @@ def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, A
     lines: list[str] = []
     if latest:
         lines.append(
-            f"FY {latest['fiscal_year']}: revenue/market cap {latest_ps if latest_ps is not None else '--'}, "
+            f"FY {latest['fiscal_year']}: price/sales {latest_ps if latest_ps is not None else '--'}, "
             f"operating profit {format_billions(latest_operating_profit) if latest_operating_profit is not None else '--'}B, "
             f"normalized NI proxy {format_billions(latest_normalized) if latest_normalized is not None else '--'}B."
         )
@@ -2383,7 +2375,7 @@ def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, A
         "years": [
             {
                 **row,
-                "psRatio": revenue_to_market_cap_ratio(row.get("revenue"), market_cap),
+                "psRatio": valuation_multiple(market_cap, row.get("revenue"), digits=4),
                 "operatingMarginPct": round_or_none(ratio_or_none(row.get("operating_income"), row.get("revenue"), 4) * 100 if ratio_or_none(row.get("operating_income"), row.get("revenue"), 4) is not None else None, 2),
                 "feeAdjustedNetIncome": adjusted_net_income_after_fee(row),
                 "normalizedNetIncomeProxy": normalized_net_income_proxy(row),
