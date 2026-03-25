@@ -182,7 +182,7 @@
         if (sort === 'filing-desc') return (b.latestFiling?.filing_date || '').localeCompare(a.latestFiling?.filing_date || '');
         if (sort === 'netIncome-desc') return (b.latestAnnual?.net_income || 0) - (a.latestAnnual?.net_income || 0);
         if (sort === 'marketCap-desc') return (b.marketData?.marketCap || 0) - (a.marketData?.marketCap || 0);
-        if (sort === 'ps-asc') return (a.psRatio || Number.MAX_SAFE_INTEGER) - (b.psRatio || Number.MAX_SAFE_INTEGER);
+        if (sort === 'ps-desc') return (b.psRatio || -Infinity) - (a.psRatio || -Infinity);
         if (sort === 'operatingProfit-desc') return (b.operatingProfit || 0) - (a.operatingProfit || 0);
         if (sort === 'feeAdjustedNetIncome-desc') return (b.feeAdjustedNetIncome || 0) - (a.feeAdjustedNetIncome || 0);
         if (sort === 'normalizedGrowth-desc') return (b.normalizedNetIncomeGrowthPct || -Infinity) - (a.normalizedNetIncomeGrowthPct || -Infinity);

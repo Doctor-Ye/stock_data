@@ -7,13 +7,13 @@
     "cik": "0001730168",
     "name": "Broadcom Inc.",
     "security": "Broadcom Inc. - Common Stock",
-    "sector": "Information Technology",
-    "subIndustry": "Semiconductors",
-    "headquarters": "Palo Alto, California",
-    "dateAdded": "2014-05-08",
+    "sector": null,
+    "subIndustry": null,
+    "headquarters": null,
+    "dateAdded": null,
     "listingExchange": "Nasdaq",
     "isAdr": false,
-    "universeSource": "market-cap,nasdaq100,sp500",
+    "universeSource": "market-cap",
     "latestAnnual": {
       "cik": "0001730168",
       "ticker": "AVGO",
@@ -116,7 +116,7 @@
           "source_form": "10-K",
           "share_based_compensation_expense": 2171000000.0,
           "special_items": 29000000.0,
-          "psRatio": 42.95,
+          "psRatio": 0.0233,
           "operatingMarginPct": 45.25,
           "feeAdjustedNetIncome": null,
           "normalizedNetIncomeProxy": null
@@ -142,7 +142,7 @@
           "source_form": "10-K",
           "share_based_compensation_expense": 5741000000.0,
           "special_items": null,
-          "psRatio": 29.83,
+          "psRatio": 0.0335,
           "operatingMarginPct": 26.1,
           "feeAdjustedNetIncome": 154000000.0,
           "normalizedNetIncomeProxy": 154000000.0
@@ -168,13 +168,13 @@
           "source_form": "10-K",
           "share_based_compensation_expense": 7568000000.0,
           "special_items": null,
-          "psRatio": 24.08,
+          "psRatio": 0.0415,
           "operatingMarginPct": 39.89,
           "feeAdjustedNetIncome": null,
           "normalizedNetIncomeProxy": null
         }
       ],
-      "latestPsRatio": 24.08,
+      "latestPsRatio": 0.0415,
       "latestOperatingProfit": 25484000000.0,
       "latestOperatingMarginPct": 40.0,
       "latestFeeAdjustedNetIncome": null,
@@ -187,7 +187,7 @@
       "projectedFiveYearNormalizedNetIncome": null,
       "fiveYearMarketCapPaybackPct": null,
       "commentary": [
-        "FY 2025: PS 24.08x, operating profit 25.48B, normalized NI proxy --B.",
+        "FY 2025: revenue/market cap 0.0415, operating profit 25.48B, normalized NI proxy --B.",
         "3Y geometric revenue growth is 33.55%."
       ],
       "methodology": [
@@ -203,7 +203,7 @@
     "revenueGrowthPct": 23.87,
     "netIncomeGrowthPct": null,
     "marketCapBillions": 1538.39,
-    "psRatio": 24.08,
+    "psRatio": 0.0415,
     "operatingProfit": 25484000000.0,
     "feeAdjustedNetIncome": null,
     "normalizedNetIncomeGrowthPct": null,
