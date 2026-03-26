@@ -23,7 +23,7 @@ from typing import Any, Iterable
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SETTINGS_PATH = PROJECT_ROOT / "config" / "settings.json"
 FALLBACK_SETTINGS_PATH = PROJECT_ROOT / "config" / "settings.example.json"
-UNIVERSE_CHECKPOINT_VERSION = 4
+UNIVERSE_CHECKPOINT_VERSION = 5
 ANNUAL_FORMS = {"10-K", "10-K/A", "10-KT", "20-F", "20-F/A", "40-F", "40-F/A"}
 QUARTERLY_FORMS = {"10-Q", "10-Q/A"}
 GUIDANCE_FORMS = ANNUAL_FORMS | QUARTERLY_FORMS | {"8-K", "8-K/A", "6-K", "6-K/A"}
@@ -79,6 +79,8 @@ def load_settings() -> dict[str, Any]:
     settings.setdefault("profitForecastsPath", str((PROJECT_ROOT / "config" / "earnings_forecasts.json").resolve()))
     settings.setdefault("nasdaq100Source", "https://en.wikipedia.org/wiki/Nasdaq-100")
     settings.setdefault("sqlitePath", str((data_root / "db" / "stock_sec.db").resolve()))
+    settings.setdefault("secTickerMapUrl", "https://www.sec.gov/files/company_tickers.json")
+    settings.setdefault("secTickerExchangeUrl", "https://www.sec.gov/files/company_tickers_exchange.json")
     settings.setdefault("formsToTrack", sorted(ANNUAL_FORMS | QUARTERLY_FORMS))
     settings.setdefault("lookbackYears", 10)
     settings.setdefault("marketDataBaseUrl", "https://stooq.com/q/l/")
@@ -280,18 +282,60 @@ def get_nasdaq100_constituents(settings: dict[str, Any]) -> list[dict[str, Any]]
     return parse_nasdaq100_constituents(fetch_text(settings["nasdaq100Source"], settings))
 
 
-def get_sec_ticker_map(settings: dict[str, Any]) -> list[dict[str, Any]]:
-    payload = fetch_json(settings["secTickerMapUrl"], settings)
+def parse_sec_ticker_payload(payload: Any) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    if isinstance(payload, dict) and "data" in payload and "fields" in payload:
+        fields = [str(field) for field in payload.get("fields", [])]
+        for entry in payload.get("data", []):
+            if isinstance(entry, dict):
+                rows.append(entry)
+            elif isinstance(entry, list):
+                rows.append({field: entry[index] if index < len(entry) else None for index, field in enumerate(fields)})
+    elif isinstance(payload, dict):
+        for entry in payload.values():
+            if isinstance(entry, dict):
+                rows.append(entry)
+    elif isinstance(payload, list):
+        rows = [entry for entry in payload if isinstance(entry, dict)]
+
     items: list[dict[str, Any]] = []
-    for row in payload.values():
+    for row in rows:
+        ticker = normalize_ticker(row.get("ticker"))
+        cik_value = row.get("cik") if row.get("cik") is not None else row.get("cik_str")
+        if not ticker or cik_value in (None, ""):
+            continue
+        title = row.get("title") or row.get("name") or row.get("company") or ticker
         items.append(
             {
-                "ticker": normalize_ticker(row["ticker"]),
-                "title": row["title"],
-                "cik": cik10(row["cik_str"]),
+                "ticker": ticker,
+                "title": str(title).strip(),
+                "cik": cik10(cik_value),
             }
         )
     return items
+
+
+def get_sec_ticker_map(settings: dict[str, Any], force: bool = False) -> list[dict[str, Any]]:
+    reference_root = Path(settings["dataRootResolved"]) / "raw" / "reference"
+    primary_payload = get_or_fetch_json(
+        settings["secTickerMapUrl"],
+        reference_root / "company_tickers.json",
+        settings,
+        force=force,
+    )
+    exchange_payload = get_or_fetch_json(
+        settings["secTickerExchangeUrl"],
+        reference_root / "company_tickers_exchange.json",
+        settings,
+        force=force,
+    )
+
+    merged: dict[str, dict[str, Any]] = {}
+    for item in parse_sec_ticker_payload(primary_payload):
+        merged[item["ticker"]] = item
+    for item in parse_sec_ticker_payload(exchange_payload):
+        merged[item["ticker"]] = item
+    return sorted(merged.values(), key=lambda item: item["ticker"])
 
 
 def get_additional_companies(settings: dict[str, Any]) -> list[dict[str, Any]]:
