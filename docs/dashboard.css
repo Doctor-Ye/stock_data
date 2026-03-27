@@ -497,6 +497,26 @@ th {
   table-layout: fixed;
 }
 
+#latest-filings-body {
+  font-variant-numeric: tabular-nums;
+}
+
+#latest-filings-body td:first-child {
+  width: 132px;
+  white-space: nowrap;
+}
+
+#latest-filings-body td:nth-child(2) {
+  width: 88px;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+#latest-filings-body td:last-child {
+  width: 96px;
+  white-space: nowrap;
+}
+
 .overview-table th,
 .overview-table td {
   white-space: normal;

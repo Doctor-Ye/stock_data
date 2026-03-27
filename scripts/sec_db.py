@@ -2397,22 +2397,35 @@ def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, A
         operating_margin = round(operating_margin * 100, 2)
 
     lines: list[str] = []
+    lines_zh: list[str] = []
     if latest:
         lines.append(
             f"FY {latest['fiscal_year']}: price/sales {latest_ps if latest_ps is not None else '--'}, "
             f"operating profit {format_billions(latest_operating_profit) if latest_operating_profit is not None else '--'}B, "
             f"normalized NI proxy {format_billions(latest_normalized) if latest_normalized is not None else '--'}B."
         )
+        lines_zh.append(
+            f"FY {latest['fiscal_year']}：市销率 {latest_ps if latest_ps is not None else '--'}，"
+            f"营业利润 {format_billions(latest_operating_profit) if latest_operating_profit is not None else '--'}B，"
+            f"扣非净利润代理值 {format_billions(latest_normalized) if latest_normalized is not None else '--'}B。"
+        )
     if normalized_growth is not None:
         trend = "improving" if normalized_growth >= 0 else "declining"
+        trend_zh = "改善" if normalized_growth >= 0 else "走弱"
         lines.append(f"Normalized net income proxy growth is {normalized_growth}% YoY, trend {trend}.")
+        lines_zh.append(f"扣非净利润代理值同比增速为 {normalized_growth}%，趋势{trend_zh}。")
     if revenue_growth_geomean is not None:
         lines.append(f"3Y geometric revenue growth is {revenue_growth_geomean}%.")
+        lines_zh.append(f"近 3 年营收几何增速为 {revenue_growth_geomean}%。")
     if normalized_pe is not None:
         lines.append(f"Normalized P/E proxy is {normalized_pe}x based on current market cap.")
+        lines_zh.append(f"基于当前市值得到的扣非净利润市盈率代理值为 {normalized_pe} 倍。")
     if five_year_market_cap_payback is not None:
         lines.append(
             f"5Y market-cap payback ratio is {five_year_market_cap_payback}% using 3Y geometric revenue growth."
+        )
+        lines_zh.append(
+            f"按 3 年营收几何增速投射，未来 5 年市值回收率为 {five_year_market_cap_payback}%。"
         )
 
     return {
@@ -2439,11 +2452,18 @@ def build_three_year_analysis(company: dict[str, Any], annuals: list[dict[str, A
         "projectedFiveYearNormalizedNetIncome": projected_five_year_normalized,
         "fiveYearMarketCapPaybackPct": five_year_market_cap_payback,
         "commentary": lines,
+        "commentaryZh": lines_zh,
         "methodology": [
             "Fee-adjusted net income proxy = net income - stock-based compensation expense.",
             "Normalized net income proxy = fee-adjusted net income proxy - absolute special items.",
             "5Y market-cap payback ratio = projected next 5 years normalized NI proxy sum / current market cap.",
             "Projection growth uses 3Y geometric revenue growth.",
+        ],
+        "methodologyZh": [
+            "扣费净利润代理值 = 净利润 - 股权激励费用。",
+            "扣非净利润代理值 = 扣费净利润代理值 - 特殊项目绝对值。",
+            "5 年市值回收率 = 未来 5 年扣非净利润代理值预测总和 / 当前市值。",
+            "增长投射默认使用 3 年营收几何增速。",
         ],
     }
 

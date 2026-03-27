@@ -260,6 +260,8 @@
       const latestFiling = company.latestFiling || {};
       const marketData = company.marketData || {};
       const analysis = company.analysis || {};
+      const commentary = config.locale === 'zh-CN' ? (analysis.commentaryZh || analysis.commentary || []) : (analysis.commentary || analysis.commentaryZh || []);
+      const methodology = config.locale === 'zh-CN' ? (analysis.methodologyZh || analysis.methodology || []) : (analysis.methodology || analysis.methodologyZh || []);
       const aliasLine = company.aliases && company.aliases.length > 1 ? `<p>${config.text.aliases}: ${company.aliases.join(', ')}</p>` : '';
 
       document.getElementById('company-head').innerHTML = `
@@ -298,8 +300,8 @@
       drawSeriesChart('quarterly-revenue-chart', detail.quarterlies.slice(-12).map((row) => ({ label: `${row.fiscal_year}-${row.fiscal_period}`, value: row.revenue })), config.text.quarterlyRevenue);
       drawSeriesChart('annual-core-profit-chart', (analysis.years || []).map((row) => ({ label: String(row.fiscal_year), value: row.normalizedNetIncomeProxy })), config.text.normalizedNetIncome);
 
-      document.getElementById('interpretation-list').innerHTML = (analysis.commentary || []).map((line) => `<li>${line}</li>`).join('');
-      document.getElementById('methodology-list').innerHTML = (analysis.methodology || []).map((line) => `<li>${line}</li>`).join('');
+      document.getElementById('interpretation-list').innerHTML = commentary.map((line) => `<li>${line}</li>`).join('');
+      document.getElementById('methodology-list').innerHTML = methodology.map((line) => `<li>${line}</li>`).join('');
 
       document.getElementById('annual-table-body').innerHTML = detail.annuals.slice().reverse().map((row) => (
         `<tr><td>${row.fiscal_year}</td><td>${fmtCurrencyCompact(row.revenue)}</td><td>${fmtCurrencyCompact(row.operating_income)}</td><td>${fmtCurrencyCompact(row.net_income)}</td><td>${fmtCurrencyCompact(row.share_based_compensation_expense)}</td><td>${fmtCurrencyCompact(row.special_items)}</td></tr>`

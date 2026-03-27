@@ -33,8 +33,14 @@
       "shares_outstanding": 209658907.0,
       "source_filed_date": "2026-02-26",
       "source_form": "10-K",
+      "dividends_paid": null,
+      "share_repurchases": null,
       "share_based_compensation_expense": 20000000.0,
-      "special_items": 27000000.0
+      "special_items": 27000000.0,
+      "pretax_income": null,
+      "income_tax_expense": null,
+      "non_recurring_charge_items": null,
+      "non_recurring_gain_items": null
     },
     "latestQuarter": {
       "cik": "0002058873",
@@ -57,8 +63,14 @@
       "shares_outstanding": 209463194.0,
       "source_filed_date": "2025-11-18",
       "source_form": "10-Q",
+      "dividends_paid": null,
+      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": 1000000.0
+      "special_items": 1000000.0,
+      "pretax_income": null,
+      "income_tax_expense": null,
+      "non_recurring_charge_items": null,
+      "non_recurring_gain_items": null
     },
     "latestFiling": {
       "accession_number": "0002058873-26-000010",
@@ -73,25 +85,25 @@
       "description": "10-K"
     },
     "marketData": {
-      "price": 113.57,
-      "previousClose": 113.57,
-      "priceDate": "2026-03-17",
-      "priceTime": "21:02:24",
-      "open": 112.97,
-      "high": 113.59,
-      "low": 110.4,
-      "volume": 702707.0,
-      "marketCap": 23788734942.58,
-      "peRatio": 34.42,
-      "pbRatio": 2.53,
+      "price": 107.59,
+      "previousClose": 107.59,
+      "priceDate": "2026-03-20",
+      "priceTime": "20:00:02",
+      "open": 111.07,
+      "high": 111.94,
+      "low": 106.22,
+      "volume": 1781851.0,
+      "marketCap": 22536145042.46,
+      "peRatio": 32.6,
+      "pbRatio": 2.4,
       "sharesOutstanding": 209463194.0,
       "shareholdersEquity": 9387000000.0,
       "dilutedEps": 3.3,
       "equitySourceFiledDate": "2025-11-18",
       "equitySourceForm": "10-Q",
       "earningsFiscalYear": 2025,
-      "source": "stooq",
-      "fetchedAtUtc": "2026-03-18T03:11:59Z"
+      "source": "yahoo",
+      "fetchedAtUtc": "2026-03-22T08:15:26Z"
     },
     "analysis": {
       "years": [
@@ -114,15 +126,21 @@
           "shares_outstanding": 209658907.0,
           "source_filed_date": "2026-02-26",
           "source_form": "10-K",
+          "dividends_paid": null,
+          "share_repurchases": null,
           "share_based_compensation_expense": 20000000.0,
           "special_items": 27000000.0,
-          "psRatio": 5.0039,
+          "pretax_income": null,
+          "income_tax_expense": null,
+          "non_recurring_charge_items": null,
+          "non_recurring_gain_items": null,
+          "psRatio": 4.7405,
           "operatingMarginPct": null,
           "feeAdjustedNetIncome": null,
           "normalizedNetIncomeProxy": null
         }
       ],
-      "latestPsRatio": 5.0039,
+      "latestPsRatio": 4.7405,
       "latestOperatingProfit": null,
       "latestOperatingMarginPct": null,
       "latestFeeAdjustedNetIncome": null,
@@ -135,13 +153,22 @@
       "projectedFiveYearNormalizedNetIncome": null,
       "fiveYearMarketCapPaybackPct": null,
       "commentary": [
-        "FY 2025: price/sales 5.0039, operating profit --B, normalized NI proxy --B."
+        "FY 2025: price/sales 4.7405, operating profit --B, normalized NI proxy --B."
+      ],
+      "commentaryZh": [
+        "FY 2025：市销率 4.7405，营业利润 --B，扣非净利润代理值 --B。"
       ],
       "methodology": [
         "Fee-adjusted net income proxy = net income - stock-based compensation expense.",
         "Normalized net income proxy = fee-adjusted net income proxy - absolute special items.",
         "5Y market-cap payback ratio = projected next 5 years normalized NI proxy sum / current market cap.",
         "Projection growth uses 3Y geometric revenue growth."
+      ],
+      "methodologyZh": [
+        "扣费净利润代理值 = 净利润 - 股权激励费用。",
+        "扣非净利润代理值 = 扣费净利润代理值 - 特殊项目绝对值。",
+        "5 年市值回收率 = 未来 5 年扣非净利润代理值预测总和 / 当前市值。",
+        "增长投射默认使用 3 年营收几何增速。"
       ]
     },
     "revenueBillions": 4.75,
@@ -149,8 +176,8 @@
     "freeCashFlowBillions": null,
     "revenueGrowthPct": null,
     "netIncomeGrowthPct": null,
-    "marketCapBillions": 23.79,
-    "psRatio": 5.0039,
+    "marketCapBillions": 22.54,
+    "psRatio": 4.7405,
     "operatingProfit": null,
     "feeAdjustedNetIncome": null,
     "normalizedNetIncomeGrowthPct": null,
@@ -160,15 +187,15 @@
     "normalizedPeProxy": null,
     "projectedFiveYearNormalizedNetIncome": null,
     "fiveYearMarketCapPaybackPct": null,
-    "forecastNetIncome": 2024.0,
-    "forecastNetIncomeFiscalYear": 2024,
-    "forecastSourceType": "official-guidance",
-    "forecastSourceName": "8-K 2025-11-06",
+    "forecastNetIncome": null,
+    "forecastNetIncomeFiscalYear": null,
+    "forecastSourceType": null,
+    "forecastSourceName": null,
     "forecastRevenue": null,
     "forecastRevenueFiscalYear": null,
     "forecastRevenueSourceType": null,
     "forecastRevenueSourceName": null,
-    "forwardPeRatio": 11753327.54
+    "forwardPeRatio": null
   },
   "annuals": [
     {
@@ -190,8 +217,14 @@
       "shares_outstanding": 209658907.0,
       "source_filed_date": "2026-02-26",
       "source_form": "10-K",
+      "dividends_paid": null,
+      "share_repurchases": null,
       "share_based_compensation_expense": 20000000.0,
-      "special_items": 27000000.0
+      "special_items": 27000000.0,
+      "pretax_income": null,
+      "income_tax_expense": null,
+      "non_recurring_charge_items": null,
+      "non_recurring_gain_items": null
     }
   ],
   "quarterlies": [
@@ -216,8 +249,14 @@
       "shares_outstanding": 209463194.0,
       "source_filed_date": "2025-11-18",
       "source_form": "10-Q",
+      "dividends_paid": null,
+      "share_repurchases": null,
       "share_based_compensation_expense": null,
-      "special_items": 1000000.0
+      "special_items": 1000000.0,
+      "pretax_income": null,
+      "income_tax_expense": null,
+      "non_recurring_charge_items": null,
+      "non_recurring_gain_items": null
     }
   ],
   "filings": [
